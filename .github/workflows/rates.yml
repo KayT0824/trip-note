@@ -1,0 +1,48 @@
+# 放在 repo 的這個位置：.github/workflows/rates.yml
+# 作用：週一到週五，台灣時間 9 點到 17 點每小時一次，從臺灣銀行牌告匯率抓資料，存成 rates.json 給 App 讀取
+name: 更新臺灣銀行牌告匯率
+on:
+  schedule:
+    - cron: "7 1-9 * * 1-5"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  rates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 抓取臺灣銀行牌告匯率
+        run: |
+          python3 - <<'PY'
+          import csv, io, json, os, urllib.request, datetime
+          req = urllib.request.Request("https://rate.bot.com.tw/xrt/flcsv/0/day", headers={"User-Agent": "Mozilla/5.0"})
+          text = urllib.request.urlopen(req, timeout=30).read().decode("utf-8-sig")
+          def num(x):
+              try: return float(x)
+              except Exception: return 0
+          rates = {}
+          for row in csv.reader(io.StringIO(text)):
+              if len(row) < 14 or "本行賣出" not in row: continue
+              i = row.index("本行賣出")
+              code = row[0].strip()
+              if len(code) == 3 and code.isalpha():
+                  rates[code] = {"cashSell": num(row[i + 1]), "spotSell": num(row[i + 2])}
+          if len(rates) < 5: raise SystemExit("臺灣銀行的資料格式可能變了，這次不更新")
+          old = {}
+          if os.path.exists("rates.json"):
+              try: old = json.load(open("rates.json", encoding="utf-8"))
+              except Exception: pass
+          age = 99
+          try: age = (datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(old["updated"])).days
+          except Exception: pass
+          if old.get("rates") != rates or age >= 3:
+              out = {"source": "臺灣銀行牌告匯率 https://rate.bot.com.tw/xrt", "updated": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"), "rates": rates}
+              json.dump(out, open("rates.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+          PY
+      - name: 存回 repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add rates.json
+          git diff --cached --quiet || (git commit -m "更新臺灣銀行牌告匯率" && git push)
