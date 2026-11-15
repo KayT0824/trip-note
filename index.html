@@ -1,0 +1,1140 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>旅行手帖</title>
+<meta name="description" content="可以自己編輯、離線使用的旅行行程手帖">
+<meta name="theme-color" content="#F7FAFD">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="旅行手帖">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: snowy picture-book hero → trip card → sticky tabs (days + lists + info + backup) with walking kid → timeline of hand-drawn cards. Floating edit toggle. Single light "snow" theme by design. */
+:root{
+  color-scheme:light;
+  --bg:#F7FAFD; --surface:#FFFFFF; --ink:#2E3A4B; --muted:#5F6C84; --line:#2E3A4B; --soft:#E2E9F2;
+  --ice:#A9CFEA; --lav:#CBBEEA; --pine:#A8D2BE; --lamp:#F6C98A; --berry:#F2A0AE;
+  --skin:#F8DCC6;
+  --bw:3px; --r-lg:22px; --r-md:16px; --r-sm:10px;
+  --f-display:"Huninn","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --pop:cubic-bezier(.34,1.56,.64,1);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.65}
+img{max-width:100%}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* hero */
+.hero{display:block;width:100%;max-width:680px;height:auto;margin:4px auto 0}
+.flake{animation:fall linear infinite}
+@keyframes fall{0%{transform:translateY(-14px);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(96px);opacity:0}}
+.hero .fox{transform-origin:250px 98px;animation:sway 3.4s ease-in-out infinite}
+.hero .foxtail{transform-origin:266px 92px;animation:wag 1.8s ease-in-out infinite}
+.hero .smoke{animation:drift 7s ease-in-out infinite}
+@keyframes sway{0%,100%{transform:rotate(0)}50%{transform:rotate(-2.5deg)}}
+@keyframes wag{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(12deg)}}
+@keyframes drift{0%,100%{transform:translateX(0)}50%{transform:translateX(10px)}}
+
+header{padding-block:6px 16px}
+.eyebrow{font-family:var(--f-display);font-size:12px;letter-spacing:.08em;color:var(--muted)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(32px,9vw,44px);line-height:1.15;margin:4px 0 6px;text-wrap:balance}
+h1 .mark{background:var(--ice);border-radius:12px;padding:0 .16em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.sub{color:var(--muted);margin:0;font-size:14px}
+.count{margin-top:12px;display:flex;flex-wrap:wrap;gap:2px 12px;align-items:baseline;padding:10px 16px;border:var(--bw) solid var(--line);border-radius:var(--r-lg);background:var(--lamp)}
+.count .num{font-family:var(--f-display);font-size:22px;font-variant-numeric:tabular-nums}
+.count .lbl{font-size:13px}
+.sample{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px 14px;border:var(--bw) dashed var(--line);border-radius:var(--r-md);background:var(--surface);font-size:14px}
+.sample b{font-family:var(--f-display);font-weight:400}
+
+/* tabs + walker */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:var(--bw) solid var(--line)}
+.tabscroll{overflow-x:auto;scrollbar-width:none}
+.tabscroll::-webkit-scrollbar{display:none}
+.tabinner{display:inline-flex;flex-direction:column;min-width:100%;width:max-content}
+.tabs{display:flex;gap:6px;padding-block:10px 0}
+.tab{flex:0 0 auto;border:2px solid transparent;background:none;font-family:var(--f-display);font-size:14px;padding:6px 10px;border-radius:var(--r-md);cursor:pointer;display:flex;flex-direction:column;align-items:center;line-height:1.2;transition:transform .25s var(--pop)}
+.tab small{font-size:10.5px;color:var(--muted)}
+.tab:hover{transform:translateY(-2px)}
+.tab[aria-selected="true"]{background:var(--ice);border-color:var(--line)}
+.tab[aria-selected="true"] .ico{animation:wiggle 2.6s ease-in-out infinite}
+.tab.add{border:2px dashed var(--line);color:var(--muted)}
+.tab .today{font-size:10px;background:var(--lamp);border-radius:999px;padding:0 6px;margin-top:2px}
+.ico{width:24px;height:24px;flex:0 0 auto}
+.tab .ico{width:26px;height:26px;margin-bottom:2px}
+@keyframes wiggle{0%,100%{transform:rotate(0)}10%{transform:rotate(-8deg)}20%{transform:rotate(8deg)}30%{transform:rotate(0)}}
+.walkway{position:relative;height:44px}
+.walkway::after{content:"";position:absolute;left:8px;right:8px;bottom:5px;border-bottom:3px dotted var(--line)}
+#walker{position:absolute;bottom:7px;left:0;width:30px;height:38px;z-index:1;transition:left .9s ease-in-out}
+#walker .fig{transform-origin:15px 19px;transition:transform .2s}
+#walker.left .fig{transform:scaleX(-1)}
+#walker .bodyg{animation:idle 2s ease-in-out infinite}
+#walker.walking .legL{animation:stepA .22s ease-in-out infinite alternate}
+#walker.walking .legR{animation:stepB .22s ease-in-out infinite alternate}
+#walker.walking .bodyg{animation:bob .22s ease-in-out infinite alternate}
+.legL{transform-origin:11.5px 26px}.legR{transform-origin:16.5px 26px}
+@keyframes stepA{from{transform:rotate(18deg)}to{transform:rotate(-18deg)}}
+@keyframes stepB{from{transform:rotate(-18deg)}to{transform:rotate(18deg)}}
+@keyframes bob{from{transform:translateY(0)}to{transform:translateY(-2px)}}
+@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-1px)}}
+
+/* page */
+main{padding-block:20px 120px}
+#main.bounce{animation:pageIn .55s var(--pop)}
+@keyframes pageIn{0%{transform:translateY(18px) scale(.97);opacity:.2}60%{transform:translateY(-6px) scale(1.01);opacity:1}100%{transform:none}}
+.dayhead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px;align-items:center;margin-bottom:8px}
+.dayhead .hl{display:flex;align-items:center;gap:10px;min-width:0}
+.dayhead h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0;line-height:1.3;text-wrap:balance}
+.mascot{width:46px;height:46px;flex:0 0 auto;animation:float 3.2s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-4px) rotate(-3deg)}}
+.progress{font-size:12px;background:var(--pine);border:2px solid var(--line);border-radius:999px;padding:1px 10px;white-space:nowrap}
+.dayintro{color:var(--muted);margin:0 0 14px;max-width:60ch;white-space:pre-line}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin:0 0 16px}
+.legend i{display:inline-block;width:16px;height:12px;margin-right:4px;vertical-align:-1px;border-radius:4px;border:2px solid var(--line);background:var(--surface)}
+.legend .l2{background:var(--berry)}.legend .l3{border-style:dashed}
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.stop{display:grid;grid-template-columns:58px 1fr;gap:10px;position:relative;padding-bottom:16px}
+.stop::before{content:"";position:absolute;left:28px;top:30px;bottom:0;border-left:3px dotted var(--line);opacity:.5}
+.stop:last-child::before{display:none}
+.time{padding-top:10px;text-align:center;position:relative;z-index:1}
+.time span{display:inline-block;font-family:var(--f-display);font-size:13px;font-variant-numeric:tabular-nums;background:var(--surface);border:2px solid var(--line);border-radius:999px;padding:1px 6px;min-width:44px}
+.card{min-width:0;background:var(--surface);border:var(--bw) solid var(--line);border-radius:var(--r-md);padding:12px 14px;transition:opacity .2s}
+.card.star{background:var(--berry)}
+.card.star .body,.card.star .body li{color:var(--ink)}
+.card.flex{border-style:dashed}
+.done .card{opacity:.5}
+.done .card h3{text-decoration:line-through}
+.row{display:flex;gap:10px;align-items:flex-start}
+.row .txt{flex:1;min-width:0}
+.card h3{font-family:var(--f-display);font-weight:400;font-size:17px;margin:0;line-height:1.4;overflow-wrap:anywhere}
+.body{color:var(--muted);font-size:14px;overflow-wrap:anywhere}
+.body p{margin:6px 0 0}
+.body ul{margin:6px 0 0;padding-left:18px}
+.body a{color:var(--ink)}
+.links{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.links a,.pill{font-size:13px;color:var(--ink);text-decoration:none;background:var(--pine);border:2px solid var(--line);border-radius:999px;padding:1px 10px}
+.chk{appearance:none;-webkit-appearance:none;width:26px;height:26px;flex:0 0 26px;border:var(--bw) solid var(--line);border-radius:8px;margin:0;cursor:pointer;display:grid;place-content:center;background:var(--surface);transition:transform .25s var(--pop)}
+.chk:active{transform:scale(.85)}
+.chk:checked{background:var(--pine)}
+.chk:checked::after{content:"";width:11px;height:6px;border:3px solid var(--ink);border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.tools{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.tbtn{border:2px solid var(--line);background:var(--surface);border-radius:999px;padding:2px 10px;font-size:13px;cursor:pointer;transition:transform .2s var(--pop)}
+.tbtn:active{transform:scale(.92)}
+.tbtn.edit{background:var(--lamp)}
+.addbtn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:6px;padding:10px;border:var(--bw) dashed var(--line);border-radius:var(--r-md);background:var(--surface);font-family:var(--f-display);font-size:15px;cursor:pointer}
+.addbtn:active{transform:scale(.98)}
+.empty{text-align:center;color:var(--muted);padding:26px 16px;border:var(--bw) dashed var(--line);border-radius:var(--r-lg);background:var(--surface)}
+.empty .mascot{width:64px;height:64px;margin:0 auto 6px;display:block}
+.note{margin-top:18px;padding:12px 14px;border-radius:var(--r-md);border:var(--bw) dashed var(--line);font-size:14px;color:var(--muted);background:var(--surface)}
+.note b{color:var(--ink)}
+
+/* lists */
+.sec{font-family:var(--f-display);font-weight:400;font-size:19px;margin:22px 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sec:first-of-type{margin-top:4px}
+.sec .cnt{font-size:12px;background:var(--pine);border:2px solid var(--line);border-radius:999px;padding:0 8px;font-family:var(--f-body)}
+.items{display:grid;gap:8px}
+.item{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border:var(--bw) solid var(--line);border-radius:var(--r-md);padding:10px 12px}
+.item .t{flex:1;min-width:0;overflow-wrap:anywhere}
+.item small{display:block;color:var(--muted);font-size:13px;white-space:pre-line}
+.item.done .t>span{text-decoration:line-through;opacity:.55}
+.mini{border:2px solid var(--line);background:var(--surface);border-radius:8px;width:30px;height:30px;flex:0 0 30px;cursor:pointer;font-size:14px;line-height:1;display:grid;place-content:center}
+.quick{display:flex;gap:8px;margin-top:8px}
+.quick input{flex:1;min-width:0;border:var(--bw) solid var(--line);border-radius:var(--r-md);padding:8px 12px;background:var(--surface)}
+.quick button{border:var(--bw) solid var(--line);border-radius:var(--r-md);background:var(--ice);padding:0 14px;font-family:var(--f-display);cursor:pointer}
+
+/* info */
+.group{background:var(--surface);border:var(--bw) solid var(--line);border-radius:var(--r-lg);overflow:hidden;margin-top:12px}
+.group h3{margin:0;padding:10px 14px;font-family:var(--f-display);font-weight:400;font-size:17px;background:var(--ice);border-bottom:var(--bw) solid var(--line);display:flex;gap:8px;align-items:center}
+.group h3 span{flex:1;min-width:0}
+.irow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:9px 14px;border-bottom:2px solid var(--soft)}
+.irow:last-child{border-bottom:0}
+.irow .k{font-size:12px;color:var(--muted);flex:0 0 100%}
+.irow .v{font-family:var(--f-display);font-size:16px;flex:1;min-width:0;overflow-wrap:anywhere;white-space:pre-line;-webkit-user-select:all;user-select:all}
+.irow .acts{display:flex;gap:6px}
+
+/* settings */
+.panel{background:var(--surface);border:var(--bw) solid var(--line);border-radius:var(--r-lg);padding:14px;margin-top:14px}
+.panel h3{margin:0 0 4px;font-family:var(--f-display);font-weight:400;font-size:18px}
+.panel p{margin:4px 0 0;color:var(--muted);font-size:14px}
+.btnrow{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.btn{border:var(--bw) solid var(--line);border-radius:999px;padding:7px 16px;font-family:var(--f-display);font-size:15px;cursor:pointer;background:var(--ice);transition:transform .2s var(--pop);text-decoration:none;color:var(--ink);display:inline-flex;align-items:center;gap:6px}
+.btn:active{transform:scale(.95)}
+.btn.y{background:var(--lamp)}.btn.g{background:var(--pine)}.btn.r{background:var(--berry)}.btn.w{background:var(--surface)}
+.steps{list-style:none;counter-reset:st;margin:10px 0 0;padding:0;display:grid;gap:8px}
+.steps li{counter-increment:st;position:relative;padding:2px 0 2px 36px;font-size:14px}
+.steps li::before{content:counter(st);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:var(--ice);border:2px solid var(--line);display:grid;place-content:center;font-family:var(--f-display);font-size:13px}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.seg button{border:2px solid var(--line);background:var(--surface);padding:3px 12px;border-radius:999px;cursor:pointer;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--lamp)}
+.ver{font-size:12px;color:var(--muted);margin-top:18px;text-align:center}
+
+/* pager */
+.maps{margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.mapbtn{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;background:var(--ice);border:var(--bw) solid var(--line);border-radius:var(--r-md);color:var(--ink);text-decoration:none;min-width:0;transition:transform .25s var(--pop)}
+.mapbtn.m1{background:var(--berry)}.mapbtn.m2{background:var(--pine)}.mapbtn.m3{background:var(--lav)}
+.mapbtn:active{transform:scale(.96)}
+.mapbtn .ico{margin-top:2px}
+.mapbtn span{min-width:0}
+.mapbtn b{display:block;font-family:var(--f-display);font-weight:400;font-size:16px}
+.mapbtn small{display:block;font-size:11.5px;line-height:1.4;overflow-wrap:anywhere}
+.errs{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.err{background:var(--surface);border:var(--bw) solid var(--line);border-radius:var(--r-lg);overflow:hidden;min-width:0}
+.err.got{opacity:.55}
+.err.got h3{text-decoration:line-through}
+.err .pic{position:relative;background:#FFFFFF;border-bottom:var(--bw) solid var(--line);height:190px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.err .pic.noimg{height:90px;background:var(--soft)}
+.err .pic.noimg .ico{width:52px;height:52px}
+.err .pic img{display:block;width:100%;height:100%;max-height:190px;object-fit:contain}
+.einfo{position:relative;background:var(--surface);padding:12px 14px 14px;min-width:0}
+.einfo h3{font-family:var(--f-display);font-weight:400;font-size:17px;margin:0;line-height:1.4;overflow-wrap:anywhere}
+.einfo .en{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{font-size:11.5px;padding:0 8px;border-radius:999px;background:var(--ice);border:2px solid var(--line);white-space:nowrap;line-height:1.6}
+.chip.y{background:var(--lamp)}.chip.g{background:var(--pine)}
+.price{margin-top:8px;display:inline-block;font-family:var(--f-display);font-size:14px;background:var(--ice);border:2px solid var(--line);border-radius:var(--r-sm);padding:1px 8px}
+.where{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.wcard{min-width:0;background:var(--surface);border:var(--bw) solid var(--line);border-radius:var(--r-md);padding:12px 14px}
+.wtop{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between}
+.wtop b{font-family:var(--f-display);font-weight:400;font-size:17px}
+.when{font-size:12px;color:var(--muted);margin-top:2px}
+.ncard{background:var(--surface);border:var(--bw) solid var(--line);border-radius:var(--r-lg);padding:14px;margin-top:12px}
+.nh{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.nh h3{font-family:var(--f-display);font-weight:400;font-size:18px;margin:0;flex:1;min-width:0}
+.pager{display:flex;justify-content:space-between;gap:10px;margin-top:26px}
+.pager button{font-family:var(--f-display);font-size:14px;background:var(--ice);border:var(--bw) solid var(--line);border-radius:999px;padding:6px 14px;cursor:pointer;display:flex;align-items:center;gap:6px;max-width:48%;transition:transform .25s var(--pop)}
+.pager button:active{transform:scale(.94)}
+.pager .nx{margin-left:auto;background:var(--lamp)}
+
+/* floating edit toggle */
+.fab{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;border:var(--bw) solid var(--line);border-radius:999px;background:var(--lamp);padding:10px 18px;font-family:var(--f-display);font-size:16px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 4px 0 var(--line);transition:transform .25s var(--pop)}
+.fab:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
+body.editing .fab{background:var(--pine)}
+.editbar{position:sticky;top:0;z-index:4}
+.editing-banner{margin:0 0 14px;padding:8px 12px;border:2px solid var(--line);border-radius:var(--r-sm);background:var(--lamp);font-size:13px}
+
+/* sheet */
+.sheet{position:fixed;inset:0;z-index:30;display:flex;align-items:flex-end;justify-content:center}
+.sheet[hidden]{display:none}
+.backdrop{position:absolute;inset:0;background:rgba(46,58,75,.45)}
+.spanel{position:relative;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;background:var(--bg);border:var(--bw) solid var(--line);border-bottom:0;border-radius:var(--r-lg) var(--r-lg) 0 0;padding:18px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));animation:sheetUp .45s var(--pop)}
+.spanel:focus{outline:none}
+@keyframes sheetUp{from{transform:translateY(40%)}to{transform:none}}
+@media (min-width:700px){.sheet{align-items:center}.spanel{border-bottom:var(--bw) solid var(--line);border-radius:var(--r-lg)}}
+.spanel h2{font-family:var(--f-display);font-weight:400;font-size:21px;margin:0 44px 10px 0}
+.close{position:absolute;top:12px;right:max(12px,env(safe-area-inset-right,0px));width:36px;height:36px;border-radius:50%;border:var(--bw) solid var(--line);background:var(--surface);font-size:22px;line-height:1;cursor:pointer}
+.field{display:block;margin-top:12px}
+.field>span{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+.field input,.field textarea,.field select{width:100%;border:var(--bw) solid var(--line);border-radius:var(--r-sm);padding:8px 10px;background:var(--surface);font-size:16px}
+.field textarea{min-height:96px;resize:vertical;line-height:1.5}
+.field small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.kinds{display:flex;flex-wrap:wrap;gap:6px}
+.kinds label{display:flex;align-items:center;gap:6px;border:2px solid var(--line);border-radius:999px;padding:3px 12px;background:var(--surface);cursor:pointer;font-size:14px}
+.kinds input{width:auto;accent-color:var(--ink)}
+.sactions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;align-items:center}
+.sactions .sp{flex:1}
+
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;background:var(--ink);color:#fff;border-radius:999px;padding:8px 16px;font-size:14px;max-width:calc(100% - 32px);text-align:center;animation:pageIn .4s var(--pop)}
+.update{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:41;border:var(--bw) solid var(--line);border-radius:999px;background:var(--lamp);padding:8px 16px;font-family:var(--f-display);cursor:pointer;max-width:calc(100% - 32px)}
+
+/* travel hero + cover photo */
+.hero .cloud{animation:drift 9s ease-in-out infinite}
+.hero .cloud2{animation:drift 12s ease-in-out infinite reverse}
+.hero .rays{transform-origin:304px 30px;animation:spin 24s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hero .fly{animation:fly 18s linear infinite}
+@keyframes fly{0%{transform:translate(-50px,54px)}100%{transform:translate(420px,22px)}}
+.cover{margin-top:8px}
+.cover img{display:block;width:100%;aspect-ratio:3/1;object-fit:cover;border:var(--bw) solid var(--line);border-radius:var(--r-lg)}
+.destline{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:8px;font-size:13px;color:var(--muted)}
+.destline .ico{width:18px;height:18px}
+
+/* live: weather / time / money */
+.dayhead .chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.wx{font-size:12px;background:var(--surface);border:2px solid var(--line);border-radius:999px;padding:1px 10px;white-space:nowrap}
+.hint,.panel p.hint{font-size:12px;color:var(--muted);margin:8px 0 0}
+.panel h3 .ico{width:20px;height:20px;vertical-align:-3px}
+.wxnow{display:flex;gap:12px;align-items:center;margin-top:6px}
+.wxnow .big{font-size:40px;line-height:1}
+.wxnow b{font-family:var(--f-display);font-weight:400;font-size:22px}
+.wxnow small{display:block;color:var(--muted);font-size:12px}
+.wxlist{display:grid;margin-top:10px;border:2px solid var(--soft);border-radius:var(--r-sm);overflow:hidden}
+.wxrow{display:grid;grid-template-columns:62px 26px minmax(0,1fr) auto 48px;gap:6px;align-items:center;padding:5px 10px;font-size:14px;border-top:1px solid var(--soft)}
+.wxrow:first-child{border-top:0}
+.wxrow.trip{background:var(--lamp)}
+.wxrow .d{font-variant-numeric:tabular-nums;font-size:13px;white-space:nowrap}
+.wxrow .tx{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wxrow .tp{font-family:var(--f-display);font-variant-numeric:tabular-nums;white-space:nowrap}
+.wxrow .pp{font-size:12px;color:var(--muted);text-align:right;white-space:nowrap}
+.wxrow.trip .tx,.wxrow.trip .pp{color:var(--ink)}
+.clocks{display:flex;gap:10px;margin-top:8px}
+.clocks div{flex:1;min-width:0;border:2px solid var(--line);border-radius:var(--r-md);padding:8px 12px;background:var(--bg)}
+.clocks small{display:block;font-size:12px;color:var(--muted)}
+.clocks b{font-family:var(--f-display);font-weight:400;font-size:26px;font-variant-numeric:tabular-nums}
+.fxline b{font-family:var(--f-display);font-weight:400;font-size:18px;color:var(--ink);display:block}
+.fxline small{display:block;font-size:12px}
+.conv{display:flex;align-items:flex-end;gap:8px;margin-top:10px}
+.conv label{flex:1;min-width:0}
+.conv label span{display:block;font-size:12px;color:var(--muted)}
+.conv input{width:100%;border:var(--bw) solid var(--line);border-radius:var(--r-sm);padding:8px 10px;background:var(--surface);font-size:16px}
+.conv .eq{font-family:var(--f-display);font-size:20px;padding-bottom:8px}
+.georesults{display:grid;gap:8px;margin-top:12px}
+.geo{text-align:left;border:var(--bw) solid var(--line);border-radius:var(--r-md);background:var(--surface);padding:8px 12px;cursor:pointer}
+.geo b{font-family:var(--f-display);font-weight:400;font-size:16px;display:block}
+.geo small{color:var(--muted);font-size:12px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:50%;border:1.5px solid var(--line);margin-right:2px;vertical-align:-1px}
+.seg button .sw:last-of-type{margin-right:5px}
+.changes{margin:8px 0 0;padding-left:20px;font-size:14px;color:var(--muted)}
+
+.tab:focus-visible,button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--lav);outline-offset:2px}
+@media (max-width:420px){.stop{grid-template-columns:52px 1fr;gap:8px}.stop::before{left:25px}.time span{font-size:12px;padding:1px 4px;min-width:40px}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+ <symbol id="i-fox" viewBox="0 0 24 24"><path d="M17 19c3.2.4 5-1.6 4.4-4.6-1.1 1.4-2.8 1.8-4.4 1.6" fill="var(--lamp)" stroke="var(--ink)" stroke-width="1.4" stroke-linejoin="round"/><path d="M6 21c0-4.4 2.6-7 6-7s6 2.6 6 7z" fill="var(--lamp)" stroke="var(--ink)" stroke-width="1.4"/><path d="M5.5 4 8.6 8.6 12 7.6l3.4 1L18.5 4l.6 6.4A7 7 0 0 1 12 15.8a7 7 0 0 1-7.1-5.4z" fill="var(--lamp)" stroke="var(--ink)" stroke-width="1.4" stroke-linejoin="round"/><path d="M7.4 11.2c1.6 3 3 3.6 4.6 3.6s3-.6 4.6-3.6" fill="#FFFFFF"/><circle cx="9.6" cy="10.6" r=".9" fill="var(--ink)"/><circle cx="14.4" cy="10.6" r=".9" fill="var(--ink)"/><path d="M11.3 12.6h1.4l-.7.8z" fill="var(--ink)"/></symbol>
+ <symbol id="i-snowman" viewBox="0 0 24 24"><circle cx="12" cy="16" r="6" fill="#FFFFFF" stroke="var(--ink)" stroke-width="1.5"/><circle cx="12" cy="8" r="4.2" fill="#FFFFFF" stroke="var(--ink)" stroke-width="1.5"/><rect x="8" y="1.5" width="8" height="3" rx="1" fill="var(--berry)" stroke="var(--ink)" stroke-width="1.3"/><circle cx="10.6" cy="7.6" r=".7" fill="var(--ink)"/><circle cx="13.4" cy="7.6" r=".7" fill="var(--ink)"/><path d="M12 9l2.6.8-2.6.6z" fill="var(--lamp)" stroke="var(--ink)" stroke-width=".6"/><path d="M8.4 11.6h7.2" stroke="var(--ice)" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="15" r=".7" fill="var(--ink)"/><circle cx="12" cy="17.6" r=".7" fill="var(--ink)"/></symbol>
+ <symbol id="i-plane" viewBox="0 0 24 24"><path d="M5.5 17.5h11a3.6 3.6 0 0 0 .3-7.2A5 5 0 0 0 7.2 9.4a4.1 4.1 0 0 0-1.7 8.1z" fill="#FFFFFF" stroke="var(--ink)" stroke-width="1.4" stroke-linejoin="round"/><path d="M13.4 5 21 1.5l-3 7.6-1.7-1.4-2.3 2.3-.9-.9 2-2.8z" fill="var(--berry)" stroke="var(--ink)" stroke-width="1" stroke-linejoin="round"/><circle cx="9.6" cy="13.6" r=".8" fill="var(--ink)"/><circle cx="13.2" cy="13.6" r=".8" fill="var(--ink)"/></symbol>
+ <symbol id="i-snow" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--ice)" stroke="var(--ink)" stroke-width="1.4"/><g stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5.9 8.5l12.2 7M5.9 15.5l12.2-7"/><path d="M10 6.4 12 8l2-1.6M10 17.6 12 16l2 1.6"/></g></symbol>
+ <symbol id="i-house" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5" fill="none" stroke="var(--ink)" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 10.5v10h14v-10" fill="var(--lamp)" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/><path d="M2.5 11.8 12 3.6l9.5 8.2-1.6.8L12 6 4.1 12.6z" fill="#FFFFFF" stroke="var(--ink)" stroke-width="1.2" stroke-linejoin="round"/><rect x="10" y="14" width="4" height="6.5" rx="1" fill="#FFFFFF" stroke="var(--ink)" stroke-width="1.2"/><rect x="6.5" y="12.5" width="2.6" height="2.6" rx=".5" fill="var(--ice)" stroke="var(--ink)" stroke-width="1"/></symbol>
+ <symbol id="i-list" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17.5" rx="2.5" fill="#FFFFFF" stroke="var(--ink)" stroke-width="1.5"/><rect x="9" y="2.5" width="6" height="3" rx="1.2" fill="var(--ice)" stroke="var(--ink)" stroke-width="1"/><path d="M8 11l1.3 1.3L11.5 10M8 16l1.3 1.3 2.2-2.3" stroke="var(--ink)" stroke-width="1.3" fill="none" stroke-linecap="round"/><path d="M13 11.5h3.5M13 16.5h3.5" stroke="var(--muted)" stroke-width="1.2" stroke-linecap="round"/></symbol>
+ <symbol id="i-info" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3" fill="var(--lav)" stroke="var(--ink)" stroke-width="1.5"/><path d="M15 5v14" stroke="var(--ink)" stroke-width="1.2" stroke-dasharray="1.6 1.4"/><path d="M6.5 10h5M6.5 13.5h4" stroke="var(--ink)" stroke-width="1.4" stroke-linecap="round"/><circle cx="18" cy="12" r="1.3" fill="#FFFFFF" stroke="var(--ink)" stroke-width="1"/></symbol>
+ <symbol id="i-box" viewBox="0 0 24 24"><path d="M3.5 8.5 12 4l8.5 4.5v8L12 21l-8.5-4.5z" fill="var(--pine)" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/><path d="M3.5 8.5 12 13l8.5-4.5M12 13v8" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 15.5v3.2M10.6 17.3 12 18.7l1.4-1.4" stroke="var(--ink)" stroke-width="1.2" fill="none" stroke-linecap="round"/></symbol>
+ <symbol id="i-bag" viewBox="0 0 24 24"><path d="M8 9V7a4 4 0 0 1 8 0v2" stroke="var(--ink)" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M4.5 9h15l-1.2 11a1.6 1.6 0 0 1-1.6 1.5H7.3a1.6 1.6 0 0 1-1.6-1.5z" fill="var(--pine)" stroke="var(--ink)" stroke-width="1.6" stroke-linejoin="round"/><path d="M9.4 13.4 9.6 11.6l1.4 1.2M14.6 13.4l-.2-1.8-1.4 1.2" fill="var(--lamp)" stroke="var(--ink)" stroke-width=".9" stroke-linejoin="round"/><circle cx="12" cy="15.2" r="2.6" fill="var(--lamp)" stroke="var(--ink)" stroke-width="1"/><circle cx="11.1" cy="15" r=".45" fill="var(--ink)"/><circle cx="12.9" cy="15" r=".45" fill="var(--ink)"/></symbol>
+ <symbol id="i-gift" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2" fill="var(--lamp)" stroke="var(--ink)" stroke-width="1.4"/><rect x="3" y="8" width="18" height="4" rx="1.5" fill="var(--berry)" stroke="var(--ink)" stroke-width="1.4"/><rect x="11" y="8" width="2" height="13" fill="#FFFFFF" stroke="var(--ink)" stroke-width="1"/><path d="M12 8C10 4 6 4.5 8 8zM12 8c2-4 6-3.5 4 0z" fill="var(--berry)" stroke="var(--ink)" stroke-width="1.2"/></symbol>
+ <symbol id="i-memo" viewBox="0 0 24 24"><path d="M5 3.5h10l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 20V5a1.5 1.5 0 0 1 1-1.5z" fill="#FFFFFF" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/><path d="M15 3.5V7.5h4" fill="var(--ice)" stroke="var(--ink)" stroke-width="1.3" stroke-linejoin="round"/><circle cx="8.5" cy="11" r="1.6" fill="var(--berry)" stroke="var(--ink)" stroke-width=".9"/><path d="M11.5 11h4.5M7.5 15h8.5M7.5 18h6" stroke="var(--ink)" stroke-width="1.3" stroke-linecap="round"/></symbol>
+ <symbol id="i-sun" viewBox="0 0 24 24"><path d="M12 1.8v2.6M12 19.6v2.6M1.8 12h2.6M19.6 12h2.6M4.8 4.8l1.8 1.8M17.4 17.4l1.8 1.8M4.8 19.2l1.8-1.8M17.4 6.6l1.8-1.8" stroke="var(--ink)" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="12" r="5.6" fill="var(--lamp)" stroke="var(--ink)" stroke-width="1.5"/><circle cx="10.2" cy="11.4" r=".8" fill="var(--ink)"/><circle cx="13.8" cy="11.4" r=".8" fill="var(--ink)"/><path d="M10.4 13.6c.9.8 2.3.8 3.2 0" stroke="var(--ink)" stroke-width="1" fill="none" stroke-linecap="round"/></symbol>
+ <symbol id="i-camera" viewBox="0 0 24 24"><path d="M8.5 6.5 10 4h4l1.5 2.5" fill="var(--ice)" stroke="var(--ink)" stroke-width="1.4" stroke-linejoin="round"/><rect x="2.5" y="6.5" width="19" height="13.5" rx="3" fill="var(--lav)" stroke="var(--ink)" stroke-width="1.5"/><circle cx="12" cy="13.2" r="4.4" fill="#FFFFFF" stroke="var(--ink)" stroke-width="1.5"/><circle cx="12" cy="13.2" r="2" fill="var(--ice)" stroke="var(--ink)" stroke-width="1.1"/><circle cx="18" cy="9.4" r=".9" fill="var(--berry)"/></symbol>
+ <symbol id="i-bowl" viewBox="0 0 24 24"><path d="M14 2.5 9.5 10.5M18 3.5 12 10.5" stroke="var(--ink)" stroke-width="1.4" stroke-linecap="round"/><path d="M2.5 11h19a9.5 9.5 0 0 1-19 0z" fill="var(--berry)" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/><path d="M5.5 14c1.5-1.4 3-1.4 4.3 0s3 1.4 4.4 0 3-1.4 4.3 0" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round"/><path d="M8 21h8" stroke="var(--ink)" stroke-width="1.5" stroke-linecap="round"/></symbol>
+ <symbol id="i-train" viewBox="0 0 24 24"><rect x="5" y="2.5" width="14" height="15.5" rx="4" fill="var(--pine)" stroke="var(--ink)" stroke-width="1.5"/><rect x="7.5" y="5.5" width="9" height="5.5" rx="1.5" fill="#FFFFFF" stroke="var(--ink)" stroke-width="1.2"/><circle cx="8.8" cy="14.5" r="1.2" fill="var(--lamp)" stroke="var(--ink)" stroke-width="1"/><circle cx="15.2" cy="14.5" r="1.2" fill="var(--lamp)" stroke="var(--ink)" stroke-width="1"/><path d="M8 18l-2.5 3.5M16 18l2.5 3.5M7 20h10" stroke="var(--ink)" stroke-width="1.4" stroke-linecap="round"/></symbol>
+ <symbol id="i-tree" viewBox="0 0 24 24"><path d="M12 2 5 11h3.5L4 17h16l-4.5-6H19z" fill="var(--pine)" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/><rect x="10.5" y="17" width="3" height="4.5" rx=".8" fill="var(--lamp)" stroke="var(--ink)" stroke-width="1.2"/></symbol>
+ <symbol id="i-pin"viewBox="0 0 24 24"><path d="M12 22s-7-6.6-7-12a7 7 0 0 1 14 0c0 5.4-7 12-7 12z" fill="var(--berry)" stroke="var(--ink)" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.8" fill="#FFFFFF" stroke="var(--ink)" stroke-width="1.4"/></symbol>
+</svg>
+
+<svg class="hero" id="heroSnow" viewBox="0 0 360 120" role="img" aria-label="繪本風插圖：雪山、雪人、小狐狸和飄落的雪花">
+  <path d="M-4 120V74l58-40 34 24 44-36 66 52 40-26 64 38 62-30v64z" fill="#FFFFFF" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M54 34l-14 10 8 2 6-5 6 6 7-4zM132 22l-16 13 9 1 7-5 8 6 8-4z" fill="var(--ice)" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M-4 120V98c46-14 96-14 140-2 40 11 76 10 116-4 42-14 80-12 112 2v26z" fill="var(--ice)" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/>
+  <g transform="translate(286 54)"><path d="M0 34h44V14L22 0 0 14z" fill="var(--lamp)" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/><path d="M-6 16 22-4l28 20" fill="none" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/><path d="M-6 16 22-4l28 20-4 3L22 1-2 19z" fill="#FFFFFF" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/><rect x="16" y="20" width="12" height="14" rx="2" fill="#FFFFFF" stroke="var(--ink)" stroke-width="2"/><rect x="31" y="-6" width="6" height="12" fill="var(--berry)" stroke="var(--ink)" stroke-width="2"/><g class="smoke"><circle cx="36" cy="-14" r="4" fill="#FFFFFF" stroke="var(--ink)" stroke-width="2"/><circle cx="42" cy="-22" r="3" fill="#FFFFFF" stroke="var(--ink)" stroke-width="2"/></g></g>
+  <g transform="translate(36 62)"><circle cx="20" cy="34" r="15" fill="#FFFFFF" stroke="var(--ink)" stroke-width="3"/><circle cx="20" cy="13" r="11" fill="#FFFFFF" stroke="var(--ink)" stroke-width="3"/><rect x="10" y="-2" width="20" height="6" rx="2" fill="var(--berry)" stroke="var(--ink)" stroke-width="2.5"/><circle cx="16" cy="12" r="1.6" fill="var(--ink)"/><circle cx="24" cy="12" r="1.6" fill="var(--ink)"/><path d="M20 15l7 2-7 1.5z" fill="var(--lamp)" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 24h22" stroke="var(--lav)" stroke-width="5" stroke-linecap="round"/><path d="M5 30-6 22M35 30l10-8" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round"/></g>
+  <g class="fox"><g class="foxtail"><path d="M266 92c16 4 26-4 24-18-6 6-14 8-22 6" fill="var(--lamp)" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/><path d="M286 78c2 0 4-2 4-4-2 2-4 3-6 3z" fill="#FFFFFF"/></g><path d="M236 104c0-12 6-20 16-20s16 8 16 20z" fill="var(--lamp)" stroke="var(--ink)" stroke-width="2.5"/><path d="M234 64l8 12 10-2 10 2 8-12 2 16a18 18 0 0 1-20 14 18 18 0 0 1-20-14z" fill="var(--lamp)" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/><path d="M240 82c4 8 8 10 12 10s8-2 12-10" fill="#FFFFFF"/><circle cx="246" cy="81" r="2" fill="var(--ink)"/><circle cx="258" cy="81" r="2" fill="var(--ink)"/><path d="M250 86h4l-2 2z" fill="var(--ink)"/></g>
+  <g fill="#FFFFFF" stroke="var(--ink)" stroke-width="1.5">
+    <circle class="flake" cx="96" cy="6" r="3" style="animation-duration:6s"/>
+    <circle class="flake" cx="160" cy="2" r="2.5" style="animation-duration:7.5s;animation-delay:-2s"/>
+    <circle class="flake" cx="206" cy="4" r="3" style="animation-duration:6.8s;animation-delay:-4s"/>
+    <circle class="flake" cx="20" cy="2" r="2.5" style="animation-duration:8s;animation-delay:-1s"/>
+    <circle class="flake" cx="330" cy="0" r="2.5" style="animation-duration:7s;animation-delay:-3s"/>
+    <circle class="flake" cx="122" cy="0" r="2" style="animation-duration:9s;animation-delay:-5s"/>
+  </g>
+</svg>
+
+<svg class="hero" id="heroTravel" viewBox="0 0 360 120" role="img" aria-label="繪本風插圖：太陽、白雲、飛機和小鎮" hidden>
+  <g class="rays" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"><path d="M304 2v6M304 52v6M276 30h6M326 30h6M284 10l4 4M320 46l4 4M284 50l4-4M320 14l4-4"/></g>
+  <circle cx="304" cy="30" r="15" fill="var(--lamp)" stroke="var(--ink)" stroke-width="3"/>
+  <g class="cloud"><path d="M30 44h44a10 10 0 0 0 0-20 14 14 0 0 0-26-4 11 11 0 0 0-18 24z" fill="#FFFFFF" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/></g>
+  <g class="cloud2"><path d="M196 30h34a8 8 0 0 0 0-16 11 11 0 0 0-20-3 9 9 0 0 0-14 19z" fill="#FFFFFF" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/></g>
+  <g class="fly"><path d="M-40 1h-30" stroke="var(--ink)" stroke-width="2" stroke-dasharray="4 5" stroke-linecap="round"/><path d="M-2 0l-7 10h5l9-10z" fill="var(--berry)" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/><path d="M-15-1l-5-8h4l6 8z" fill="var(--berry)" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/><ellipse cx="0" cy="0" rx="17" ry="4.5" fill="#FFFFFF" stroke="var(--ink)" stroke-width="2"/><circle cx="5" cy="-.5" r="1.1" fill="var(--ink)"/><circle cx="9" cy="-.5" r="1.1" fill="var(--ink)"/></g>
+  <path d="M-4 120V80c40-26 90-26 130 0s90 26 130 0 70-24 108-8v48z" fill="var(--pine)" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/>
+  <use href="#i-tree" x="44" y="38" width="30" height="30"/>
+  <use href="#i-tree" x="300" y="50" width="26" height="26"/>
+  <rect x="120" y="66" width="22" height="38" rx="3" fill="var(--lav)" stroke="var(--ink)" stroke-width="3"/>
+  <path d="M125 74h4M133 74h4M125 84h4M133 84h4" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round"/>
+  <rect x="146" y="52" width="26" height="52" rx="3" fill="#FFFFFF" stroke="var(--ink)" stroke-width="3"/>
+  <path d="M142 54l17-15 17 15z" fill="var(--berry)" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/>
+  <rect x="154" y="64" width="10" height="10" rx="2" fill="var(--ice)" stroke="var(--ink)" stroke-width="2"/>
+  <rect x="176" y="74" width="22" height="30" rx="3" fill="var(--lamp)" stroke="var(--ink)" stroke-width="3"/>
+  <path d="M182 82h10" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M-4 120V100c60-12 120-12 180 0s120 12 188-4v24z" fill="var(--ice)" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/>
+</svg>
+<div class="wrap cover" id="cover" hidden><img alt="封面照片"></div>
+
+<header class="wrap" id="head"></header>
+
+<nav><div class="wrap"><div class="tabscroll" id="tabscroll"><div class="tabinner">
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div class="walkway" aria-hidden="true">
+   <svg id="walker" viewBox="0 0 30 38"><g class="fig">
+    <rect class="legL" x="10" y="26" width="3" height="9" rx="1.5" fill="var(--ink)"/>
+    <rect class="legR" x="15" y="26" width="3" height="9" rx="1.5" fill="var(--ink)"/>
+    <g class="bodyg">
+     <rect x="4.5" y="17.5" width="5.5" height="8.5" rx="2.2" fill="var(--lamp)" stroke="var(--ink)" stroke-width="1"/>
+     <rect x="8" y="16.5" width="12" height="11" rx="4" fill="var(--berry)" stroke="var(--ink)" stroke-width="1"/>
+     <circle cx="14" cy="10" r="6.4" fill="var(--skin)"/>
+     <path d="M7.4 9.6a6.6 6.6 0 0 1 13.2 0z" fill="var(--ice)" stroke="var(--ink)" stroke-width="1"/>
+     <circle cx="14" cy="2.6" r="2" fill="#FFFFFF" stroke="var(--ink)" stroke-width="1"/>
+     <path d="M8.5 16.5h11" stroke="var(--lav)" stroke-width="2.6" stroke-linecap="round"/>
+     <circle cx="16.6" cy="11.4" r="1" fill="var(--ink)"/>
+     <circle cx="18.2" cy="13.4" r="1.1" fill="var(--berry)" opacity=".6"/>
+    </g></g></svg>
+  </div>
+</div></div></div></nav>
+
+<main class="wrap" id="main"></main>
+
+<button type="button" class="fab" id="fab"><span id="fabtxt">✎ 編輯</span></button>
+
+<div id="sheet" class="sheet" hidden>
+  <div class="backdrop" data-close></div>
+  <div class="spanel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" tabindex="-1">
+    <button type="button" class="close" data-close aria-label="關閉">×</button>
+    <div id="sheetBody"></div>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+<button type="button" id="updateBtn" class="update" hidden>有新版本，點這裡更新</button>
+<input type="file" id="importFile" accept=".json,application/json" hidden>
+<input type="file" id="heroFile" accept="image/*" hidden>
+
+<script>
+"use strict";
+const APP_VERSION="2.0.0";
+/* 每次更新：改 APP_VERSION、改下面的更新內容，並把 sw.js 的 CACHE 版本號一起改掉 */
+const CHANGES=["通用版：不限目的地，任何旅行都能用","新增「天氣匯率」頁：當地天氣預報、時差、匯率換算","設定頁可以換 App 名稱、配色、封面圖片、每天的小圖示","伴手禮和代買可以一鍵搜尋商品"];
+const KEY="tripnote:data";
+const WK=["日","一","二","三","四","五","六"];
+const hadData=(()=>{try{return !!localStorage.getItem(KEY)}catch(e){return false}})();
+
+/* ---------- look: palettes + icons ---------- */
+const PALETTES={
+  snow:{name:"雪白",bg:"#F7FAFD",ink:"#2E3A4B",muted:"#5F6C84",soft:"#E2E9F2",ice:"#A9CFEA",lav:"#CBBEEA",pine:"#A8D2BE",lamp:"#F6C98A",berry:"#F2A0AE"},
+  sea:{name:"海島",bg:"#F3FAF9",ink:"#1F3F48",muted:"#4F6E77",soft:"#D9ECEA",ice:"#8FD6D2",lav:"#B9C8F2",pine:"#BDE3A6",lamp:"#FFD37A",berry:"#FFA48E"},
+  sakura:{name:"花見",bg:"#FFF7F8",ink:"#4A3040",muted:"#7A5F6C",soft:"#F3E0E6",ice:"#F8C3D1",lav:"#D8C3EE",pine:"#C4E0B2",lamp:"#FFE08A",berry:"#FFB088"},
+  forest:{name:"森林",bg:"#F5F8F0",ink:"#2C3A27",muted:"#5F6B57",soft:"#E1E8D4",ice:"#BEDB94",lav:"#D9D0F0",pine:"#98CDA6",lamp:"#F3C977",berry:"#EBA190"},
+  city:{name:"城市",bg:"#F7F6F2",ink:"#24272E",muted:"#5B606B",soft:"#E7E5DF",ice:"#FFD966",lav:"#B6C6F3",pine:"#A6DCCB",lamp:"#FFB877",berry:"#FF9494"}
+};
+const ICONSETS={
+  snow:{first:"i-plane",last:"i-house",mid:["i-snowman","i-fox","i-snow"],mascot:"i-snowman"},
+  travel:{first:"i-plane",last:"i-house",mid:["i-camera","i-sun","i-bowl","i-train","i-tree"],mascot:"i-camera"}
+};
+const ICON_OPTS=[["","自動（依設定頁的圖示風格）"],["i-plane","飛機"],["i-train","火車"],["i-camera","相機"],["i-sun","太陽"],["i-bowl","美食"],["i-tree","樹林"],["i-pin","地點"],["i-bag","購物"],["i-gift","禮物"],["i-snowman","雪人"],["i-fox","小狐狸"],["i-snow","雪花"],["i-house","回家"]];
+const DEF_LOOK=()=>({appName:"旅行手帖",palette:"snow",hero:"snow",heroImg:"",icons:"snow"});
+const OLD_LOOK=()=>Object.assign(DEF_LOOK(),{appName:"雪旅手帖"});
+
+/* ---------- live data: currency + weather codes ---------- */
+const CUR={JP:"JPY",KR:"KRW",TH:"THB",VN:"VND",SG:"SGD",MY:"MYR",HK:"HKD",MO:"MOP",CN:"CNY",TW:"TWD",PH:"PHP",ID:"IDR",KH:"KHR",LA:"LAK",MM:"MMK",IN:"INR",MN:"MNT",US:"USD",CA:"CAD",MX:"MXN",GB:"GBP",CH:"CHF",CZ:"CZK",HU:"HUF",PL:"PLN",DK:"DKK",SE:"SEK",NO:"NOK",IS:"ISK",TR:"TRY",AE:"AED",EG:"EGP",AU:"AUD",NZ:"NZD",FR:"EUR",DE:"EUR",IT:"EUR",ES:"EUR",NL:"EUR",AT:"EUR",BE:"EUR",PT:"EUR",GR:"EUR",FI:"EUR",IE:"EUR",LU:"EUR",HR:"EUR",SI:"EUR",SK:"EUR",EE:"EUR",LV:"EUR",LT:"EUR",MT:"EUR",CY:"EUR"};
+const WX={0:["☀️","晴"],1:["🌤️","晴時多雲"],2:["⛅","多雲"],3:["☁️","陰"],45:["🌫️","霧"],48:["🌫️","霧凇"],51:["🌦️","毛毛雨"],53:["🌦️","毛毛雨"],55:["🌧️","毛毛雨"],56:["🌧️","凍雨"],57:["🌧️","凍雨"],61:["🌦️","小雨"],63:["🌧️","雨"],65:["🌧️","大雨"],66:["🌧️","凍雨"],67:["🌧️","凍雨"],71:["🌨️","小雪"],73:["🌨️","雪"],75:["❄️","大雪"],77:["🌨️","霰"],80:["🌦️","陣雨"],81:["🌧️","陣雨"],82:["⛈️","強陣雨"],85:["🌨️","陣雪"],86:["❄️","強陣雪"],95:["⛈️","雷雨"],96:["⛈️","雷雨冰雹"],99:["⛈️","雷雨冰雹"]};
+const wxE=c=>(WX[c]||["🌡️",""])[0],wxT=c=>(WX[c]||["",""])[1];
+
+/* ---------- sample data (Hokkaido, family, December) ---------- */
+const uid=()=>Math.random().toString(36).slice(2,9);
+function sample(){
+  const d=(date,label,title,intro,stops)=>({id:uid(),date,label,title,intro,stops:stops.map(s=>({id:uid(),done:false,kind:"fixed",note:"",place:"",...s}))});
+  return {
+    v:3, sample:true,
+    trip:{title:"北海道家族旅行",subtitle:"札幌・小樽・旭川 冬季五日",start:"2026-12-20",end:"2026-12-24",people:"爸爸、媽媽、我、妹妹",
+      dest:{name:"札幌",label:"札幌・北海道・日本",lat:43.0642,lon:141.3469,tz:"Asia/Tokyo",cc:"JP"},cur:"JPY",home:"TWD"},
+    days:[
+      d("2026-12-20","抵達","飛往北海道","中午抵達新千歲機場，搭 JR 到札幌，傍晚逛大通公園。",[
+        {time:"07:30",title:"桃園機場報到",kind:"fixed",note:"- 確認護照、機票\n- 行動電源放隨身行李"},
+        {time:"09:30",title:"起飛 TPE → CTS",kind:"fixed",note:"航班號碼填在「資訊」頁"},
+        {time:"14:00",title:"抵達新千歲機場",kind:"fixed",note:"入境後買 JR 車票，或用 Suica 刷卡",place:"New Chitose Airport"},
+        {time:"15:30",title:"JR 快速 Airport 到札幌",kind:"fixed",note:"約 40 分鐘",place:"Sapporo Station"},
+        {time:"16:30",title:"飯店 Check-in",kind:"fixed",note:"飯店名稱、地址填在「資訊」頁"},
+        {time:"18:00",title:"大通公園燈飾、晚餐",kind:"star",note:"冬天有燈飾活動，實際日期請看官方公告\n- 晚餐：湯咖哩或成吉思汗烤肉",place:"Odori Park Sapporo"}
+      ]),
+      d("2026-12-21","小樽","小樽運河一日","JR 到小樽，白天逛堺町通，傍晚看運河點燈。",[
+        {time:"09:30",title:"JR 札幌 → 小樽",kind:"fixed",note:"約 40 分鐘",place:"Otaru Station"},
+        {time:"10:30",title:"堺町通散步",kind:"flex",note:"- 小樽音樂盒堂\n- 北一硝子\n- 六花亭、LeTAO 甜點",place:"Sakaimachi Street Otaru"},
+        {time:"12:30",title:"午餐：三角市場海鮮丼",kind:"flex",place:"Sankaku Market Otaru"},
+        {time:"16:00",title:"小樽運河 傍晚點燈",kind:"star",note:"天黑很早，16 點過後就很漂亮。路面結冰，穿防滑鞋",place:"Otaru Canal"},
+        {time:"18:30",title:"回札幌",kind:"fixed"}
+      ]),
+      d("2026-12-22","旭川","旭山動物園","從札幌搭 JR 特急到旭川，看冬天的動物。",[
+        {time:"08:00",title:"JR 特急 札幌 → 旭川",kind:"fixed",note:"約 1.5 小時，建議先劃位",place:"Asahikawa Station"},
+        {time:"10:00",title:"旭山動物園",kind:"star",note:"- 企鵝散步是冬季活動，出發前查動物園公告的開始日期\n- 北極熊館、海豹館",place:"Asahiyama Zoo"},
+        {time:"15:00",title:"旭川拉麵",kind:"flex",place:"Asahikawa Ramen Village"},
+        {time:"17:30",title:"JR 回札幌",kind:"fixed"}
+      ]),
+      d("2026-12-23","札幌","札幌市區","慢慢逛，買伴手禮。",[
+        {time:"09:00",title:"二条市場 早餐",kind:"flex",place:"Nijo Market Sapporo"},
+        {time:"11:00",title:"白色戀人公園",kind:"flex",note:"可以預約做餅乾體驗",place:"Shiroi Koibito Park"},
+        {time:"15:00",title:"狸小路、藥妝店採買",kind:"flex",place:"Tanukikoji Shopping Street"},
+        {time:"18:00",title:"札幌電視塔 夜景",kind:"star",place:"Sapporo TV Tower"}
+      ]),
+      d("2026-12-24","返程","回台灣","提早到機場，新千歲機場本身就很好逛。",[
+        {time:"09:00",title:"退房、JR 到新千歲機場",kind:"fixed"},
+        {time:"10:30",title:"機場逛街、吃拉麵道場",kind:"flex",note:"Royce 巧克力、薯條三兄弟",place:"New Chitose Airport"},
+        {time:"13:30",title:"起飛 CTS → TPE",kind:"fixed"}
+      ])
+    ],
+    lists:packing(),
+    errands:[
+      {id:uid(),title:"Royce 生巧克力",en:"ROYCE' Nama Chocolate",img:"",who:"○○",qty:"2 盒",price:"台灣參考價：自己填",where:"新千歲機場",note:"- 要冷藏，最後一天在機場買\n- 機場有保冷袋可以買",done:false},
+      {id:uid(),title:"北海道限定口味零食",en:"",img:"",who:"○○",qty:"1 包",price:"",where:"超市、藥妝店",note:"範例：照片可以在編輯時上傳",done:false}
+    ],
+    gifts:{
+      places:[
+        {id:uid(),name:"新千歲機場",when:"最後一天",best:"一次買齊",note:"國內線航廈的伴手禮店最多，要冷藏的甜點最後再買。"},
+        {id:uid(),name:"超市、藥妝店",when:"市區每天順路",best:"零食最划算",note:"零食、泡麵、咖哩塊通常比觀光區便宜。"},
+        {id:uid(),name:"小樽堺町通",when:"小樽那天",best:"玻璃、音樂盒",note:"北一硝子、小樽音樂盒堂，易碎品請店家包好。"}
+      ],
+      items:[
+        {id:uid(),title:"白色戀人",en:"Shiroi Koibito",img:"",who:"同事",qty:"",price:"",where:"機場、市區",note:"北海道最經典的伴手禮",done:false},
+        {id:uid(),title:"薯條三兄弟",en:"Jagapokkuru",img:"",who:"",qty:"",price:"",where:"新千歲機場",note:"熱門，常缺貨，看到就買",done:false},
+        {id:uid(),title:"六花亭 葡萄奶油夾心餅",en:"Rokkatei Marusei Butter Sand",img:"",who:"",qty:"",price:"",where:"六花亭門市、機場",note:"",done:false}
+      ]
+    },
+    notes:[
+      {id:uid(),title:"網路 eSIM 安裝（iPhone）",tag:"自己填",body:"出發前在有 Wi‑Fi 的地方先裝好\n- 設定 → 行動服務 → 加入 eSIM\n- 選「使用行動條碼」，掃另一台裝置上的 QR Code\n- 依畫面完成，方案命名為「旅遊 eSIM」\n- 落地後：打開旅遊 eSIM 和它的「數據漫遊」，行動數據選旅遊 eSIM；主要門號的數據漫遊保持關閉\n實際步驟以 eSIM 憑證上的說明為準"},
+      {id:uid(),title:"網路 eSIM 安裝（Android）",tag:"",body:"- 設定 → 網路和網際網路（或連線）→ SIM 卡 → 新增 eSIM\n- 掃描 QR Code，依畫面完成\n- 落地後開啟這張 eSIM 的行動數據與漫遊\n各品牌選單名稱不同，以憑證說明為準"},
+      {id:uid(),title:"交通票券",tag:"自己填",body:"- JR 車票或 JR Pass：購買方式、兌換地點\n- Suica／Kitaca 交通卡：可以搭 JR、地鐵，也能在便利商店付款"},
+      {id:uid(),title:"旅遊保險",tag:"自己填",body:"- 保險公司、方案名稱\n- 保單號碼\n- 海外緊急救援電話（0800 免付費電話通常在國外打不通）\n- 班機或行李延誤：跟航空公司要延誤證明、留好收據"},
+      {id:uid(),title:"雪地安全",tag:"冬天必看",body:"- 結冰路面很滑：走路步伐小一點，重心放前面，手不要插口袋\n- 室外零下、室內暖氣很熱：穿脫方便的洋蔥式穿法\n- 雪地反光強：戴太陽眼鏡、擦防曬\n- 低溫下手機掉電很快：行動電源放貼身口袋\n- 天黑很早，下午 4 點多就暗了，行程排早一點"}
+    ],
+    info:[
+      {id:uid(),title:"航班",rows:[
+        {id:uid(),label:"去程",value:"12/20 ○○航空 ○○○ 桃園 09:30 → 新千歲 14:00",kind:"text"},
+        {id:uid(),label:"回程",value:"12/24 ○○航空 ○○○ 新千歲 13:30 → 桃園 17:00",kind:"text"}
+      ]},
+      {id:uid(),title:"住宿",rows:[
+        {id:uid(),label:"札幌飯店",value:"飯店名稱",kind:"map"},
+        {id:uid(),label:"訂房編號",value:"",kind:"text"}
+      ]},
+      {id:uid(),title:"緊急聯絡",rows:[
+        {id:uid(),label:"日本報警",value:"110",kind:"phone"},
+        {id:uid(),label:"日本救護車／消防",value:"119",kind:"phone"}
+      ]}
+    ]
+  };
+}
+const mkList=(title,arr)=>({id:uid(),title,items:arr.map(([text,note])=>({id:uid(),text,note:note||"",done:false}))});
+function packingBasic(){
+  const g=mkList;
+  return [
+    g("證件與錢",[["護照","效期要比回程日期多 6 個月以上"],["身分證",""],["機票、訂房資料","截圖存手機，沒網路也能看"],["當地貨幣現金","小店、市場可能只收現金"],["信用卡","出發前開好海外刷卡"],["旅遊保險資料","保單號碼、海外救援電話"]]),
+    g("電子與網路",[["eSIM 或 Wi‑Fi 機","出發前先安裝好"],["手機充電線、充電頭",""],["轉接頭","先查目的地的插座形狀和電壓"],["行動電源","只能放隨身行李"]]),
+    g("衣物",[["換洗衣物",""],["薄外套","飛機上和室內冷氣可能很冷"],["好走的鞋子",""]]),
+    g("保養與藥品",[["常備藥","感冒藥、腸胃藥、個人用藥"],["防曬乳",""],["盥洗、保養用品",""],["口罩",""]]),
+    g("其他",[["購物袋、摺疊行李袋","伴手禮會買很多"],["小毛巾、面紙",""],["摺疊傘",""]])
+  ];
+}
+function packing(){
+  const g=mkList;
+  return [
+    g("證件與錢",[["護照","效期要比回程日期多 6 個月以上"],["身分證",""],["機票、訂房資料","截圖存手機，沒網路也能看"],["日幣現金","小店、扭蛋、部分餐廳只收現金"],["信用卡","出發前開好海外刷卡"],["旅遊保險資料","保單號碼、海外救援電話"]]),
+    g("電子與網路",[["eSIM 或 Wi‑Fi 機","出發前先安裝好"],["手機充電線、充電頭","日本插座和台灣一樣，不用轉接頭"],["行動電源","低溫掉電快；只能放隨身行李"],["相機、備用電池","電池放貼身口袋保暖"]]),
+    g("保暖衣物（洋蔥式穿法）",[["發熱衣、發熱褲","不要穿棉質內層，流汗後會變冷"],["刷毛衣或輕羽絨","室內暖氣很熱，方便穿脫"],["防水防風外套","最好有帽子"],["毛帽（蓋住耳朵）",""],["圍巾或脖圍",""],["防水手套","可以再加一雙薄的內層手套，拍照方便"],["厚襪子","多帶幾雙備用"]]),
+    g("雪地裝備",[["防水防滑雪靴","冬天北海道最重要的一件；一般球鞋在結冰路面很危險"],["鞋底冰爪（簡易款）","沒有雪靴的話一定要帶；當地便利商店、藥妝店也買得到"],["暖暖包（貼式、手握式）","日本便利商店也有賣"],["太陽眼鏡","雪地反光很刺眼"],["摺疊傘","外套沒有帽子的話帶著"]]),
+    g("保養與藥品",[["護唇膏","非常乾燥"],["保濕乳液、護手霜",""],["防曬乳","雪地反光，冬天也會曬傷"],["常備藥","感冒藥、腸胃藥、個人用藥"],["口罩",""]]),
+    g("其他",[["購物袋、摺疊行李袋","伴手禮會買很多"],["小毛巾、面紙",""],["塑膠袋","裝濕掉的鞋子或手套"]])
+  ];
+}
+function blank(look){
+  return {v:3,sample:false,look:Object.assign(DEF_LOOK(),look||{}),trip:{title:"我的旅行",subtitle:"",start:"",end:"",people:"",dest:null,cur:"",home:"TWD"},
+    days:[{id:uid(),date:"",label:"第一天",title:"出發",intro:"",stops:[]}],
+    lists:packingBasic(),errands:[],gifts:{places:[],items:[]},notes:[],
+    info:[{id:uid(),title:"航班",rows:[]},{id:uid(),title:"住宿",rows:[]}]};
+}
+
+/* ---------- storage ---------- */
+let state, saveOK=true;
+function load(){
+  try{const raw=localStorage.getItem(KEY);if(raw){const d=JSON.parse(raw);if(valid(d))return d}}catch(e){}
+  return sample();
+}
+function valid(d){return d&&typeof d==="object"&&d.trip&&Array.isArray(d.days)&&Array.isArray(d.lists)&&Array.isArray(d.info)}
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify(state));saveOK=true}
+  catch(e){saveOK=false;toast("沒辦法儲存，請到「備份」頁匯出備份")}
+}
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+state=migrate(load());save();
+function migrate(d){
+  const old=d.v||1;
+  if(old<2){
+    if(d.sample){const s=sample();s.look=d.look||OLD_LOOK();return migrate(s)}   // 還沒動過的範例：直接換成新版範例
+    const sm=sample(),have=new Set(d.lists.map(l=>l.title));
+    sm.lists.forEach(l=>{if(!have.has(l.title))d.lists.push(l)});   // 補上北海道冬季行前清單
+    if(!Array.isArray(d.errands)||!d.errands.length)d.errands=sm.errands;
+    if(!d.gifts||!d.gifts.items)d.gifts=sm.gifts;
+    if(!Array.isArray(d.notes)||!d.notes.length)d.notes=sm.notes;
+  }
+  if(!Array.isArray(d.errands))d.errands=[];
+  if(!d.gifts||typeof d.gifts!=="object")d.gifts={places:[],items:[]};
+  if(!Array.isArray(d.gifts.places))d.gifts.places=[];
+  if(!Array.isArray(d.gifts.items))d.gifts.items=[];
+  if(!Array.isArray(d.notes))d.notes=[];
+  if(!d.look||typeof d.look!=="object")d.look=old<3?OLD_LOOK():DEF_LOOK();   // 舊版（雪旅手帖）的使用者保留原本的名稱和樣子
+  d.look=Object.assign(DEF_LOOK(),d.look);
+  if(!PALETTES[d.look.palette])d.look.palette="snow";
+  if(!ICONSETS[d.look.icons])d.look.icons="snow";
+  if(!d.trip.home)d.trip.home="TWD";
+  if(d.trip.cur==null)d.trip.cur="";
+  d.days.forEach(x=>{if(!Array.isArray(x.stops))x.stops=[]});
+  d.v=3;return d;
+}
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const mapUrl=q=>"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(q);
+const ico=(id,c="ico")=>`<svg class="${c}" aria-hidden="true"><use href="#${id}"/></svg>`;
+function fmtDate(iso){if(!iso)return "";const d=new Date(iso+"T00:00:00");if(isNaN(d))return iso;return `${d.getMonth()+1}/${d.getDate()} ${WK[d.getDay()]}`}
+function todayIso(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function noteHtml(t){
+  if(!t)return "";
+  const lines=String(t).split(/\r?\n/);let h="",ul=[];
+  const flush=()=>{if(ul.length){h+="<ul>"+ul.map(x=>`<li>${linkify(x)}</li>`).join("")+"</ul>";ul=[]}};
+  lines.forEach(l=>{const m=l.match(/^\s*[-・•*]\s*(.*)$/);if(m){ul.push(m[1])}else if(l.trim()){flush();h+=`<p>${linkify(l)}</p>`}});
+  flush();return h;
+}
+function linkify(s){return esc(s).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>')}
+let toastT;
+function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2600)}
+const iconSet=()=>ICONSETS[state.look.icons]||ICONSETS.snow;
+const mascot=()=>iconSet().mascot;
+function dayIcon(i,n,d){if(d&&d.icon)return d.icon;const s=iconSet();if(i===0)return s.first;if(i===n-1&&n>1)return s.last;return s.mid[(i-1)%s.mid.length]}
+const searchUrl=q=>"https://www.google.com/search?q="+encodeURIComponent(q);
+
+/* apply palette / name / cover */
+function applyLook(){
+  const L=state.look,p=PALETTES[L.palette]||PALETTES.snow,r=document.documentElement.style;
+  ["bg","ink","muted","soft","ice","lav","pine","lamp","berry"].forEach(k=>r.setProperty("--"+k,p[k]));r.setProperty("--line",p.ink);
+  const m=document.querySelector('meta[name="theme-color"]');m&&m.setAttribute("content",p.bg);
+  document.title=L.appName||"旅行手帖";
+  $("#heroSnow").toggleAttribute("hidden",L.hero!=="snow");$("#heroTravel").toggleAttribute("hidden",L.hero!=="travel");
+  const c=$("#cover");if(L.hero==="photo"&&L.heroImg){c.querySelector("img").src=L.heroImg;c.hidden=false}else c.hidden=true;
+}
+
+/* time zones */
+function tzOffset(tz){try{const n=new Date();return Math.round((new Date(n.toLocaleString("en-US",{timeZone:tz}))-new Date(n.toLocaleString("en-US",{timeZone:"UTC"})))/6e4)}catch(e){return null}}
+function clock(tz){try{return new Intl.DateTimeFormat("zh-TW",{timeZone:tz,hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date())}catch(e){return "—"}}
+function diffText(tz){
+  const a=tzOffset(tz),b=tzOffset("Asia/Taipei");if(a==null||b==null)return "";
+  const m=a-b;if(m===0)return "和台灣同一個時間";
+  const h=Math.abs(m)/60,s=Number.isInteger(h)?h:h.toFixed(1);
+  return m>0?`當地比台灣快 ${s} 小時`:`當地比台灣慢 ${s} 小時`;
+}
+
+/* live cache (weather + exchange rate), kept out of backups */
+const LKEY="tripnote:live";
+let live={};try{live=JSON.parse(localStorage.getItem(LKEY)||"{}")||{}}catch(e){live={}}
+function saveLive(){try{localStorage.setItem(LKEY,JSON.stringify(live))}catch(e){}}
+const destKey=()=>{const D=state.trip.dest;return D?`${(+D.lat).toFixed(2)},${(+D.lon).toFixed(2)}`:""};
+const fxKey=()=>`${state.trip.cur}>${state.trip.home}`;
+function wxFor(iso){
+  const w=live.w;if(!w||!iso||w.key!==destKey()||!w.daily)return null;
+  const i=w.daily.time.indexOf(iso);if(i<0)return null;
+  const pp=w.daily.precipitation_probability_max;
+  return {code:w.daily.weather_code[i],max:w.daily.temperature_2m_max[i],min:w.daily.temperature_2m_min[i],pop:pp?pp[i]:null};
+}
+function getJSON(url){
+  const c=new AbortController(),t=setTimeout(()=>c.abort(),12000);
+  return fetch(url,{signal:c.signal,cache:"no-store"}).then(r=>{clearTimeout(t);if(!r.ok)throw new Error(r.status);return r.json()});
+}
+const shortTime=ms=>new Date(ms).toLocaleString("zh-TW",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
+let liveBusy=false,liveMsg="";
+async function refreshLive(force){
+  const t=state.trip,D=t.dest;if(!D||liveBusy)return;
+  if(!navigator.onLine){if(force)toast("目前沒有網路，先顯示上次的資料");return}
+  const now=Date.now(),k=destKey(),fk=fxKey();
+  const needW=force||!live.w||live.w.key!==k||now-live.w.at>3*36e5;
+  const needF=!!(t.cur&&t.home&&t.cur!==t.home)&&(force||!live.fx||live.fx.key!==fk||now-live.fx.at>6*36e5);
+  if(!needW&&!needF)return;
+  liveBusy=true;liveMsg="更新中…";paintLive();
+  const jobs=[];
+  if(needW)jobs.push(getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${D.lat}&longitude=${D.lon}&current=temperature_2m,apparent_temperature,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=16`)
+    .then(j=>{if(!j||!j.daily)throw new Error("wx");live.w={key:k,at:Date.now(),cur:j.current||null,daily:j.daily}}));
+  if(needF)jobs.push(getJSON(`https://open.er-api.com/v6/latest/${encodeURIComponent(t.cur)}`)
+    .then(j=>{const r=j&&j.rates&&j.rates[t.home];if(!r)throw new Error("fx");live.fx={key:fk,at:Date.now(),rate:r}}));
+  const res=await Promise.allSettled(jobs);liveBusy=false;saveLive();
+  liveMsg=res.some(r=>r.status==="rejected")?"有些資料沒有更新成功，等一下再按「立即更新」試試":"";
+  if(force&&!liveMsg)toast("已更新");
+  paintLive();
+  if(state.days.some(d=>d.id===cur))render(cur,{quiet:true});
+}
+
+/* ---------- ui state ---------- */
+let editing=false, cur=null;
+const FIXED=[{id:"live",tab:"天氣匯率",sub:"時差",icon:"i-sun"},{id:"errand",tab:"代買",sub:"幫朋友買",icon:"i-bag"},{id:"gifts",tab:"伴手禮",sub:"哪裡買",icon:"i-gift"},{id:"notes",tab:"注意事項",sub:"網路・保險",icon:"i-memo"},{id:"lists",tab:"行前清單",sub:"打勾",icon:"i-list"},{id:"info",tab:"資訊",sub:"航班・住宿",icon:"i-info"},{id:"backup",tab:"設定",sub:"外觀・備份",icon:"i-box"}];
+function tabsAll(){return state.days.map((d,i)=>({id:d.id,tab:d.label||`第 ${i+1} 天`,sub:fmtDate(d.date)||`Day ${i+1}`,icon:dayIcon(i,state.days.length,d),iso:d.date})).concat(FIXED)}
+
+/* ---------- header ---------- */
+function renderHead(){
+  const t=state.trip;
+  const range=t.start?`${fmtDate(t.start)}${t.end?" – "+fmtDate(t.end):""}`:"";
+  let h=`<div class="eyebrow">${esc(range||"旅行手帖")}${t.people?" ・ "+esc(t.people):""}</div>
+  <h1><span class="mark">${esc(t.title||"我的旅行")}</span></h1>
+  ${t.subtitle?`<p class="sub">${esc(t.subtitle)}</p>`:""}
+  ${t.dest?`<div class="destline">${ico("i-pin")}<span>${esc(t.dest.name)}</span><span id="localTime"></span></div>`:""}
+  <div class="count" id="count"></div>`;
+  const maps=[];state.info.forEach(g=>g.rows.forEach(r=>{if(r.kind==="map"&&r.value)maps.push(r)}));
+  if(maps.length)h+=`<div class="maps">${maps.slice(0,4).map((r,i)=>`<a class="mapbtn m${i%4}" href="${mapUrl(r.value)}" target="_blank" rel="noopener">${ico("i-pin")}<span><b>${esc(r.label)}</b><small>${esc(r.value)}</small></span></a>`).join("")}</div>`;
+  if(editing)h+=`<div class="btnrow"><button type="button" class="btn y" data-act="editTrip">✎ 修改旅程名稱與日期</button></div>`;
+  if(state.sample)h+=`<div class="sample"><span><b>這是北海道範例行程。</b>可以直接改成自己的，或清空重來。</span><button type="button" class="btn w" data-act="keepSample">保留範例，直接修改</button><button type="button" class="btn r" data-act="askClear">清空，從頭開始</button></div>`;
+  $("#head").innerHTML=h;tick();
+}
+function tick(){
+  countdown();const D=state.trip.dest;if(!D)return;
+  const lt=$("#localTime");if(lt)lt.textContent=`當地現在 ${clock(D.tz)}`;
+  const a=$("#clkDest"),b=$("#clkTW");if(a)a.textContent=clock(D.tz);if(b)b.textContent=clock("Asia/Taipei");
+}
+function countdown(){
+  const el=$("#count");if(!el)return;const t=state.trip;
+  if(!t.start){el.innerHTML='<span class="lbl">按右下角「編輯」填上出發日期，這裡會顯示倒數</span>';return}
+  const s=new Date(t.start+"T00:00:00"),e=new Date((t.end||t.start)+"T23:59:59"),now=new Date();
+  if(now>e){el.innerHTML='<span class="lbl">旅行結束了，歡迎回家</span>';return}
+  if(now>=s){const n=Math.floor((now-s)/864e5)+1;el.innerHTML=`<span class="num">旅行第 ${n} 天</span><span class="lbl">玩得開心！</span>`;return}
+  const days=Math.ceil((s-now)/864e5);el.innerHTML=`<span class="num">還有 ${days} 天</span><span class="lbl">出發</span>`;
+}
+
+/* ---------- tabs ---------- */
+function renderTabs(){
+  const tabs=$("#tabs"),today=todayIso();
+  tabs.innerHTML=tabsAll().map(t=>`<button type="button" class="tab" role="tab" data-id="${t.id}" aria-selected="${t.id===cur}">${ico(t.icon)}${esc(t.tab)}<small>${esc(t.sub)}</small>${t.iso&&t.iso===today?'<span class="today">今天</span>':""}</button>`).join("")
+   +(editing?`<button type="button" class="tab add" data-act="addDay">${ico("i-snow")}＋ 新增一天<small>行程</small></button>`:"");
+}
+
+/* ---------- day page ---------- */
+function renderDay(d,idx){
+  const n=d.stops.length,c=d.stops.filter(s=>s.done).length;
+  const w=wxFor(d.date);
+  let h=`<div class="dayhead"><div class="hl">${ico(dayIcon(idx,state.days.length,d),"mascot")}<h2>${esc(fmtDate(d.date)?fmtDate(d.date)+"・":"")}${esc(d.title||d.label||"")}</h2></div><div class="chips">${w?`<span class="wx" title="${esc(state.trip.dest.name)}天氣預報">${wxE(w.code)} ${Math.round(w.max)}° / ${Math.round(w.min)}°${w.pop!=null?` 💧${w.pop}%`:""}</span>`:""}${n?`<span class="progress">${c} / ${n} 完成</span>`:""}</div></div>`;
+  if(d.intro)h+=`<p class="dayintro">${esc(d.intro)}</p>`;
+  if(editing)h+=`<div class="tools" style="margin:0 0 14px"><button type="button" class="tbtn edit" data-act="editDay" data-id="${d.id}">✎ 修改這一天</button><button type="button" class="tbtn" data-act="moveDay" data-id="${d.id}" data-dir="-1">← 往前移</button><button type="button" class="tbtn" data-act="moveDay" data-id="${d.id}" data-dir="1">往後移 →</button></div>`;
+  if(n){
+    h+=`<div class="legend"><span><i></i>已訂好</span><span><i class="l2"></i>重點</span><span><i class="l3"></i>可調整</span></div><ol class="tl">`;
+    d.stops.forEach((s,i)=>{
+      h+=`<li class="stop${s.done?" done":""}"><div class="time"><span>${esc(s.time||"—")}</span></div><div class="card ${esc(s.kind||"fixed")}">
+       <div class="row"><div class="txt"><h3>${esc(s.title||"（未命名）")}</h3><div class="body">${noteHtml(s.note)}</div>
+       ${s.place?`<div class="links"><a href="${mapUrl(s.place)}" target="_blank" rel="noopener">在地圖上看</a></div>`:""}</div>
+       <input type="checkbox" class="chk" aria-label="完成 ${esc(s.title)}" data-act="toggleStop" data-day="${d.id}" data-id="${s.id}" ${s.done?"checked":""}></div>
+       ${editing?`<div class="tools"><button type="button" class="tbtn edit" data-act="editStop" data-day="${d.id}" data-id="${s.id}">✎ 修改</button><button type="button" class="tbtn" data-act="moveStop" data-day="${d.id}" data-id="${s.id}" data-dir="-1" aria-label="往上移">↑</button><button type="button" class="tbtn" data-act="moveStop" data-day="${d.id}" data-id="${s.id}" data-dir="1" aria-label="往下移">↓</button></div>`:""}
+      </div></li>`});
+    h+="</ol>";
+  }else{
+    h+=`<div class="empty">${ico(mascot(),"mascot")}這一天還沒有行程。<br>${editing?"按下面的按鈕新增第一個行程。":"按右下角「編輯」開始新增。"}</div>`;
+  }
+  if(editing)h+=`<button type="button" class="addbtn" data-act="addStop" data-day="${d.id}">＋ 新增行程</button>`;
+  return h;
+}
+
+/* ---------- product cards (代買 / 伴手禮) ---------- */
+function prodCards(arr,kind){
+  if(!arr.length)return `<div class="empty">${ico(kind==="errand"?"i-bag":"i-gift","mascot")}還沒有項目。${editing?"按下面的按鈕新增。":"按右下角「編輯」開始新增。"}</div>`;
+  return `<div class="errs">${arr.map(e=>`<article class="err${e.done?" got":""}">
+    <div class="pic${e.img?"":" noimg"}">${e.img?`<img src="${e.img}" alt="${esc(e.title)}" loading="lazy">`:ico(kind==="errand"?"i-bag":"i-gift")}</div>
+    <div class="einfo"><div class="row"><div class="txt"><h3>${esc(e.title||"（未命名）")}</h3>${e.en?`<div class="en">${esc(e.en)}</div>`:""}</div>
+     <input type="checkbox" class="chk" aria-label="已買 ${esc(e.title)}" data-act="toggleProd" data-kind="${kind}" data-id="${e.id}" ${e.done?"checked":""}></div>
+     <div class="meta">${e.who?`<span class="chip">給 ${esc(e.who)}</span>`:""}${e.qty?`<span class="chip y">${esc(e.qty)}</span>`:""}${e.where?`<span class="chip g">${esc(e.where)}</span>`:""}</div>
+     ${e.price?`<div class="price">${esc(e.price)}</div>`:""}
+     ${e.title||e.en?`<div class="links"><a href="${searchUrl(e.en||e.title)}" target="_blank" rel="noopener">🔍 搜尋這個商品</a></div>`:""}
+     <div class="body">${noteHtml(e.note)}</div>
+     ${editing?`<div class="tools"><button type="button" class="tbtn edit" data-act="editProd" data-kind="${kind}" data-id="${e.id}">✎ 修改</button><button type="button" class="tbtn" data-act="moveProd" data-kind="${kind}" data-id="${e.id}" data-dir="-1" aria-label="往上移">↑</button><button type="button" class="tbtn" data-act="moveProd" data-kind="${kind}" data-id="${e.id}" data-dir="1" aria-label="往下移">↓</button></div>`:""}
+    </div></article>`).join("")}</div>`;
+}
+const prodArr=k=>k==="errand"?state.errands:state.gifts.items;
+function renderErrand(){
+  const c=state.errands.filter(e=>e.done).length;
+  return `<div class="dayhead"><div class="hl">${ico("i-bag","mascot")}<h2>幫朋友代買</h2></div>${state.errands.length?`<span class="progress">${c} / ${state.errands.length} 買好</span>`:""}</div>
+  <p class="dayintro">朋友託買的東西、給誰、數量、台灣參考價。可以放照片，到店裡比對比較不會買錯。</p>${prodCards(state.errands,"errand")}
+  ${editing?`<button type="button" class="addbtn" data-act="addProd" data-kind="errand">＋ 新增代買項目</button>`:""}`;
+}
+function renderGifts(){
+  const g=state.gifts,c=g.items.filter(e=>e.done).length;
+  let h=`<div class="dayhead"><div class="hl">${ico("i-gift","mascot")}<h2>伴手禮</h2></div>${g.items.length?`<span class="progress">${c} / ${g.items.length} 買好</span>`:""}</div>
+  <p class="dayintro">先看哪裡買什麼最划算，再照清單買。不要全部留到最後一天。</p>
+  <h3 class="sec">哪裡買比較划算</h3><div class="where">`;
+  if(!g.places.length)h+=`<div class="empty" style="padding:16px">還沒有地點</div>`;
+  g.places.forEach(w=>{h+=`<div class="wcard"><div class="wtop"><b>${esc(w.name)}</b>${w.best?`<span class="chip y">${esc(w.best)}</span>`:""}</div>${w.when?`<div class="when">${esc(w.when)}</div>`:""}<div class="body">${noteHtml(w.note)}</div>${editing?`<div class="tools"><button type="button" class="tbtn edit" data-act="editPlace" data-id="${w.id}">✎ 修改</button></div>`:""}</div>`});
+  h+=`</div>${editing?`<button type="button" class="addbtn" data-act="addPlace">＋ 新增購買地點</button>`:""}
+  <h3 class="sec">推薦伴手禮</h3>${prodCards(g.items,"gift")}${editing?`<button type="button" class="addbtn" data-act="addProd" data-kind="gift">＋ 新增伴手禮</button>`:""}`;
+  return h;
+}
+function renderNotes(){
+  let h=`<div class="dayhead"><div class="hl">${ico("i-memo","mascot")}<h2>出發前注意事項</h2></div></div>
+  <p class="dayintro">網路、交通票券、保險這些出發前要注意的事。可以自己新增或修改。</p>`;
+  if(!state.notes.length)h+=`<div class="empty">${ico("i-memo","mascot")}還沒有注意事項。</div>`;
+  state.notes.forEach(n=>{h+=`<section class="ncard"><div class="nh"><h3>${esc(n.title)}</h3>${n.tag?`<span class="chip">${esc(n.tag)}</span>`:""}</div><div class="body">${noteHtml(n.body)}</div>${editing?`<div class="tools"><button type="button" class="tbtn edit" data-act="editNote" data-id="${n.id}">✎ 修改</button><button type="button" class="tbtn" data-act="moveNote" data-id="${n.id}" data-dir="-1" aria-label="往上移">↑</button><button type="button" class="tbtn" data-act="moveNote" data-id="${n.id}" data-dir="1" aria-label="往下移">↓</button></div>`:""}</section>`});
+  if(editing)h+=`<button type="button" class="addbtn" style="margin-top:14px" data-act="addNote">＋ 新增一則注意事項</button>`;
+  return h;
+}
+
+/* ---------- lists page ---------- */
+function renderLists(){
+  const tot=state.lists.reduce((a,l)=>a+l.items.length,0),dn=state.lists.reduce((a,l)=>a+l.items.filter(i=>i.done).length,0);
+  let h=`<div class="dayhead"><div class="hl">${ico("i-list","mascot")}<h2>行前清單</h2></div><span class="progress">${dn} / ${tot} 準備好</span></div><p class="dayintro">出國要帶的東西，邊收行李邊打勾。可以自己新增、修改、刪除。</p>`;
+  state.lists.forEach(l=>{
+    const c=l.items.filter(i=>i.done).length;
+    h+=`<h3 class="sec">${esc(l.title)}<span class="cnt">${c} / ${l.items.length}</span>${editing?`<button type="button" class="tbtn edit" data-act="editList" data-id="${l.id}">✎ 改名／刪除</button>`:""}</h3><div class="items">`;
+    if(!l.items.length)h+=`<div class="empty" style="padding:16px">還沒有項目</div>`;
+    l.items.forEach(it=>{
+      h+=`<label class="item${it.done?" done":""}" for="c_${it.id}"><input type="checkbox" class="chk" id="c_${it.id}" data-act="toggleItem" data-list="${l.id}" data-id="${it.id}" ${it.done?"checked":""}><span class="t"><span>${esc(it.text)}</span>${it.note?`<small>${esc(it.note)}</small>`:""}</span>${editing?`<button type="button" class="mini" data-act="editItem" data-list="${l.id}" data-id="${it.id}" aria-label="修改 ${esc(it.text)}">✎</button>`:""}</label>`});
+    h+=`</div>`;
+    if(editing)h+=`<form class="quick" data-act="quickAdd" data-list="${l.id}"><input type="text" id="q_${l.id}" placeholder="輸入項目，按新增" aria-label="新增到 ${esc(l.title)}"><button type="submit">新增</button></form>`;
+  });
+  if(editing)h+=`<button type="button" class="addbtn" style="margin-top:18px" data-act="addList">＋ 新增一份清單</button>`;
+  return h;
+}
+
+/* ---------- info page ---------- */
+function renderInfo(){
+  let h=`<div class="dayhead"><div class="hl">${ico("i-info","mascot")}<h2>旅行資訊</h2></div></div><p class="dayintro">航班、住宿、訂位編號、緊急電話。沒網路時也看得到。</p>`;
+  state.info.forEach(g=>{
+    h+=`<section class="group"><h3><span>${esc(g.title)}</span>${editing?`<button type="button" class="tbtn" data-act="editGroup" data-id="${g.id}">✎</button>`:""}</h3>`;
+    if(!g.rows.length)h+=`<div class="irow"><span class="k">還沒有資料${editing?"，按下面新增":""}</span></div>`;
+    g.rows.forEach(r=>{
+      const act=r.kind==="map"&&r.value?`<a class="pill" href="${mapUrl(r.value)}" target="_blank" rel="noopener">地圖</a>`:r.kind==="link"&&/^https?:\/\//.test(r.value)?`<a class="pill" href="${esc(r.value)}" target="_blank" rel="noopener">開啟</a>`:"";
+      h+=`<div class="irow"><span class="k">${esc(r.label)}</span><span class="v">${esc(r.value||"—")}</span><span class="acts">${act}${r.value?`<button type="button" class="tbtn" data-act="copy" data-text="${esc(r.value)}">複製</button>`:""}${editing?`<button type="button" class="tbtn edit" data-act="editRow" data-group="${g.id}" data-id="${r.id}">✎</button>`:""}</span></div>`});
+    if(editing)h+=`<div class="irow"><button type="button" class="tbtn" data-act="addRow" data-group="${g.id}">＋ 新增一行</button></div>`;
+    h+=`</section>`;
+  });
+  if(editing)h+=`<button type="button" class="addbtn" style="margin-top:14px" data-act="addGroup">＋ 新增一個分類</button>`;
+  return h;
+}
+
+/* ---------- live page (weather / time / money) ---------- */
+function wxHtml(){
+  const w=live.w,t=state.trip;
+  if(!w||w.key!==destKey()||!w.daily)return `<p class="hint">${navigator.onLine?"載入中…":"需要網路才能取得天氣，連上網路後會自動更新。"}</p>`;
+  const end=t.end||t.start,inTrip=iso=>!!t.start&&iso>=t.start&&iso<=end;
+  const c=w.cur,pp=w.daily.precipitation_probability_max;let h="";
+  if(c)h+=`<div class="wxnow"><span class="big">${wxE(c.weather_code)}</span><span><b>${Math.round(c.temperature_2m)}°C</b> ${esc(wxT(c.weather_code))}<small>當地現在・體感 ${Math.round(c.apparent_temperature)}°C</small></span></div>`;
+  h+=`<div class="wxlist">${w.daily.time.map((iso,i)=>`<div class="wxrow${inTrip(iso)?" trip":""}"><span class="d">${fmtDate(iso)}</span><span>${wxE(w.daily.weather_code[i])}</span><span class="tx">${esc(wxT(w.daily.weather_code[i]))}</span><span class="tp">${Math.round(w.daily.temperature_2m_max[i])}° / ${Math.round(w.daily.temperature_2m_min[i])}°</span><span class="pp">${pp&&pp[i]!=null?"💧"+pp[i]+"%":""}</span></div>`).join("")}</div>`;
+  if(t.start&&!w.daily.time.some(inTrip))h+=`<p class="hint">行程日期還不在預報範圍內（大約只能看未來兩週），出發前兩週左右就會出現在這裡和每天的行程頁。</p>`;
+  else if(t.start)h+=`<p class="hint">黃色底的是行程日期，每天的行程頁上方也會顯示天氣。</p>`;
+  h+=`<p class="hint">更新時間 ${shortTime(w.at)}・資料來源 Open-Meteo</p>`;
+  return h;
+}
+function fmtRate(r){return r>=100?r.toFixed(1):r>=1?r.toFixed(3):r.toPrecision(3)}
+function fxLine(){
+  const t=state.trip,f=live.fx;
+  if(!t.cur)return `還沒設定當地貨幣，按下面的「更改幣別」設定。`;
+  if(t.cur===t.home)return `當地貨幣和你的貨幣一樣，不用換算。`;
+  if(!f||f.key!==fxKey())return navigator.onLine?"載入中…":"需要網路才能取得匯率，連上網路後會自動更新。";
+  return `<b>1 ${esc(t.cur)} ≈ ${fmtRate(f.rate)} ${esc(t.home)}</b><small>更新時間 ${shortTime(f.at)}・資料來源 ExchangeRate-API・實際以銀行、刷卡匯率為準</small>`;
+}
+function renderLive(){
+  const t=state.trip,D=t.dest;
+  let h=`<div class="dayhead"><div class="hl">${ico("i-sun","mascot")}<h2>天氣・時差・匯率</h2></div></div>
+  <p class="dayintro">有網路時會自動更新；沒網路時，顯示上次存下來的資料。</p>`;
+  if(!D)return h+`<section class="panel"><h3>先設定目的地</h3><p>輸入要去的城市，就能看到當地的天氣預報、時差和匯率。</p><div class="btnrow"><button type="button" class="btn y" data-act="setDest">📍 設定目的地</button></div></section>`;
+  h+=`<section class="panel"><h3>${ico("i-pin")} ${esc(D.label||D.name)}</h3><div class="btnrow"><button type="button" class="btn w" data-act="setDest">更換目的地</button><button type="button" class="btn" data-act="reloadLive">↻ 立即更新</button></div><p class="hint" id="livemsg">${esc(liveMsg)}</p></section>
+  <section class="panel"><h3>時差</h3><div class="clocks"><div><small>${esc(D.name)}</small><b id="clkDest">${clock(D.tz)}</b></div><div><small>台灣</small><b id="clkTW">${clock("Asia/Taipei")}</b></div></div><p>${esc(diffText(D.tz))}</p></section>
+  <section class="panel"><h3>天氣預報</h3><div id="wbox">${wxHtml()}</div></section>
+  <section class="panel"><h3>匯率</h3><p class="fxline" id="fxline">${fxLine()}</p>
+   ${t.cur&&t.cur!==t.home?`<div class="conv"><label><span>${esc(t.cur)}</span><input id="cvA" inputmode="decimal" placeholder="輸入金額" autocomplete="off"></label><span class="eq">=</span><label><span>${esc(t.home)}</span><input id="cvB" inputmode="decimal" placeholder="換算結果" autocomplete="off"></label></div>`:""}
+   <div class="btnrow"><button type="button" class="btn w" data-act="setCur">更改幣別</button></div></section>`;
+  return h;
+}
+function paintLive(){
+  if(cur!=="live")return;
+  const w=$("#wbox"),f=$("#fxline"),m=$("#livemsg");
+  if(w)w.innerHTML=wxHtml();if(f)f.innerHTML=fxLine();if(m)m.textContent=liveMsg;
+  const a=$("#cvA");if(a&&a.value)convert(a);
+}
+function convert(el){
+  const f=live.fx;if(!f||f.key!==fxKey())return;
+  const other=el.id==="cvA"?$("#cvB"):$("#cvA"),v=parseFloat(String(el.value).replace(/,/g,""));
+  if(!other)return;if(isNaN(v)){other.value="";return}
+  const out=el.id==="cvA"?v*f.rate:v/f.rate;
+  other.value=out>=100?String(Math.round(out)):out.toFixed(2);
+}
+document.addEventListener("input",e=>{if(e.target.id==="cvA"||e.target.id==="cvB")convert(e.target)});
+let geoRes=[];
+function searchGeo(q){
+  const box=$("#geoRes");if(!box)return;
+  if(!q){toast("請輸入城市名稱");return}
+  if(!navigator.onLine){box.innerHTML='<p class="hint">需要網路才能搜尋</p>';return}
+  box.innerHTML='<p class="hint">搜尋中…</p>';
+  getJSON(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&language=zh&format=json`).then(j=>{
+    geoRes=(j&&j.results)||[];const b=$("#geoRes");if(!b)return;
+    b.innerHTML=geoRes.length?geoRes.map((r,i)=>`<button type="button" class="geo" data-act="pickDest" data-i="${i}"><b>${esc(r.name)}</b><small>${esc([r.admin1,r.country].filter(Boolean).join("・"))}</small></button>`).join(""):'<p class="hint">找不到這個地方，換個寫法或用英文試試（例如 Sapporo、Bangkok）</p>';
+  }).catch(()=>{const b=$("#geoRes");if(b)b.innerHTML='<p class="hint">搜尋失敗，請稍後再試</p>'});
+}
+
+/* ---------- backup page ---------- */
+let installTab=/iPhone|iPad|iPod/.test(navigator.userAgent)?"ios":/Android/.test(navigator.userAgent)?"android":"pc";
+function renderBackup(){
+  const INST={
+    ios:["用 Safari 打開這個網址（不要用 LINE 內建瀏覽器）","點下方的「分享」按鈕","選「加入主畫面」，按「新增」","之後從主畫面的圖示打開，沒網路也能用"],
+    android:["用 Chrome 打開這個網址","點右上角「⋮」選單","選「安裝應用程式」或「加到主畫面」","之後從桌面的圖示打開，沒網路也能用"],
+    pc:["用 Chrome 或 Edge 打開這個網址","網址列右邊有「安裝」圖示，點下去","或直接把網址加入書籤","在電腦上排好行程後，用「匯出備份」把資料搬到手機"]};
+  const L=state.look;
+  const seg=(act,val,opts)=>`<div class="seg" role="group">${opts.map(([k,l,pre])=>`<button type="button" data-act="${act}" data-k="${k}" aria-pressed="${val===k}">${pre||""}${esc(l)}</button>`).join("")}</div>`;
+  return `<div class="dayhead"><div class="hl">${ico("i-box","mascot")}<h2>設定與備份</h2></div></div>
+  <p class="dayintro">資料只存在這台裝置的瀏覽器裡，不會上傳到任何地方。</p>
+  <section class="panel"><h3>外觀</h3><p>換成自己喜歡的樣子。外觀設定也會跟著備份檔一起匯出。</p>
+   <div class="field"><span>App 名稱</span><form class="quick" data-act="setName" style="margin-top:0"><input id="appNameIn" value="${esc(L.appName)}" maxlength="20" aria-label="App 名稱"><button type="submit">儲存</button></form></div>
+   <div class="field"><span>配色</span>${seg("setPal",L.palette,Object.entries(PALETTES).map(([k,p])=>[k,p.name,`<i class="sw" style="background:${p.ice}"></i><i class="sw" style="background:${p.berry}"></i>`]))}</div>
+   <div class="field"><span>封面圖片</span>${seg("setHero",L.hero,[["snow","雪景插畫"],["travel","旅行插畫"],["photo","自己的照片"],["none","不顯示"]])}
+    ${L.heroImg?`<div class="btnrow"><button type="button" class="btn w" data-act="pickHero">換一張照片</button></div>`:""}<p class="hint">照片會自動縮小，存在這台裝置裡。</p></div>
+   <div class="field"><span>每天的小圖示</span>${seg("setIcons",L.icons,[["snow","雪國風"],["travel","旅行風"]])}<p class="hint">編輯每一天時，也可以各自挑一個圖示。</p></div>
+  </section>
+  <section class="panel"><h3>匯出備份</h3><p>把行程存成一個小檔案（.json）。換手機、從電腦搬到手機、或更新版本前，都先匯出一份。</p>
+   <div class="btnrow"><button type="button" class="btn y" data-act="export">⬇ 匯出備份</button></div></section>
+  <section class="panel"><h3>匯入備份</h3><p>選擇之前匯出的備份檔，會<b>取代</b>這台裝置上目前的行程。</p>
+   <div class="btnrow"><button type="button" class="btn" data-act="import">⬆ 匯入備份</button></div></section>
+  <section class="panel"><h3>從電腦搬到手機</h3>
+   <ol class="steps"><li>在電腦按「匯出備份」</li><li>把檔案用 LINE「傳給自己」、Email 或雲端硬碟傳到手機，存到手機的「檔案」</li><li>在手機打開這個 App，到「備份」頁按「匯入備份」，選那個檔案</li></ol></section>
+  <section class="panel"><h3>安裝到手機或電腦</h3>
+   <div class="seg" role="group" aria-label="選擇裝置">${[["ios","iPhone"],["android","Android"],["pc","電腦"]].map(([k,l])=>`<button type="button" data-act="instTab" data-k="${k}" aria-pressed="${installTab===k}">${l}</button>`).join("")}</div>
+   <ol class="steps">${INST[installTab].map(x=>`<li>${esc(x)}</li>`).join("")}</ol>
+   <p style="margin-top:10px">iPhone 小提醒：一定要「加入主畫面」再使用，資料比較不會被系統清掉。重要行程記得定期匯出備份。</p></section>
+  <section class="panel"><h3>重新開始</h3><p>清空所有行程，開始一份新的旅行。建議先匯出備份。</p>
+   <div class="btnrow"><button type="button" class="btn r" data-act="askClear">清空所有資料</button><button type="button" class="btn w" data-act="askSample">載入北海道範例</button></div></section>
+  <section class="panel"><h3>這個版本更新了什麼</h3><ul class="changes">${CHANGES.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></section>
+  <p class="ver">${esc(L.appName)} 版本 ${APP_VERSION}${saveOK?"":" ・ ⚠ 目前無法儲存"}</p>`;
+}
+
+/* ---------- main render ---------- */
+function pager(id){
+  const all=tabsAll(),i=all.findIndex(x=>x.id===id),p=all[i-1],n=all[i+1];
+  return `<div class="pager">${p?`<button type="button" data-go="${p.id}">‹ ${ico(p.icon)}${esc(p.tab)}</button>`:""}${n?`<button type="button" class="nx" data-go="${n.id}">${esc(n.tab)}${ico(n.icon)} ›</button>`:""}</div>`;
+}
+function render(id,opts={}){
+  const prev=cur;const all=tabsAll();
+  if(!all.some(t=>t.id===id))id=all[0].id;
+  cur=id;
+  renderTabs();
+  const m=$("#main");let h=editing?`<div class="editing-banner">編輯中：點「✎」修改，改完按右下角「✓ 完成」。所有修改會自動儲存。</div>`:"";
+  const di=state.days.findIndex(d=>d.id===id);
+  if(di>=0)h+=renderDay(state.days[di],di);
+  else if(id==="lists")h+=renderLists();
+  else if(id==="errand")h+=renderErrand();
+  else if(id==="gifts")h+=renderGifts();
+  else if(id==="notes")h+=renderNotes();
+  else if(id==="info")h+=renderInfo();
+  else if(id==="live")h+=renderLive();
+  else h+=renderBackup();
+  m.innerHTML=h+pager(id);
+  if(id==="live")refreshLive(false);
+  moveWalker(prev);
+  if(prev&&prev!==cur&&!opts.quiet){m.classList.remove("bounce");void m.offsetWidth;m.classList.add("bounce")}
+  try{localStorage.setItem("tripnote:tab",id)}catch(e){}
+}
+function rerender(){renderHead();render(cur,{quiet:true})}
+function go(id){render(id);const nav=document.querySelector("nav"),top=$("#main").getBoundingClientRect().top+scrollY-nav.offsetHeight;if(scrollY>top)scrollTo({top,behavior:"smooth"})}
+
+/* walker */
+let walkT;
+function moveWalker(prev){
+  const w=$("#walker"),btn=document.querySelector(`.tab[data-id="${cur}"]`),sc=$("#tabscroll");if(!w||!btn)return;
+  const x=btn.offsetLeft+btn.offsetWidth/2-15;
+  if(!prev||prev===cur){w.style.transition="none";w.style.left=x+"px";void w.offsetWidth;w.style.transition=""}
+  else{const all=tabsAll(),pi=all.findIndex(t=>t.id===prev),ci=all.findIndex(t=>t.id===cur);
+    w.classList.toggle("left",ci<pi);w.classList.add("walking");w.style.left=x+"px";clearTimeout(walkT);walkT=setTimeout(()=>w.classList.remove("walking"),900)}
+  const target=Math.max(0,btn.offsetLeft-(sc.clientWidth-btn.offsetWidth)/2);
+  try{sc.scrollTo({left:target,behavior:prev?"smooth":"auto"})}catch(e){sc.scrollLeft=target}
+}
+
+/* ---------- sheet editor ---------- */
+let sheetSave=null,sheetDelete=null,delArmed=false,noArm=false;
+function openSheet({title,fields,values={},onSave,onDelete,deleteLabel="刪除",extra="",confirm=false,saveLabel="儲存"}){
+  sheetSave=onSave;sheetDelete=onDelete||null;delArmed=false;noArm=confirm;
+  const f=fields.map(fd=>{
+    const v=values[fd.k]==null?"":values[fd.k];const id="f_"+fd.k;
+    let inp;
+    if(fd.type==="textarea")inp=`<textarea id="${id}" name="${fd.k}" placeholder="${esc(fd.ph||"")}">${esc(v)}</textarea>`;
+    else if(fd.type==="kind")inp=`<div class="kinds" role="radiogroup" aria-label="${esc(fd.label)}">${fd.options.map(([val,l])=>`<label><input type="radio" name="${fd.k}" value="${val}" ${v===val?"checked":""}>${esc(l)}</label>`).join("")}</div>`;
+    else if(fd.type==="image")inp=`${v?`<img src="${v}" alt="" style="display:block;max-height:120px;border:2px solid var(--line);border-radius:8px;margin-bottom:6px"><label style="font-size:13px;display:flex;gap:6px;align-items:center;margin-bottom:6px"><input type="checkbox" id="f_img_rm" style="width:auto">移除這張照片</label>`:""}<input id="${id}" type="file" accept="image/*">`;
+    else if(fd.type==="select")inp=`<select id="${id}" name="${fd.k}">${fd.options.map(([val,l])=>`<option value="${val}" ${v===val?"selected":""}>${esc(l)}</option>`).join("")}</select>`;
+    else inp=`<input id="${id}" name="${fd.k}" type="${fd.type||"text"}" value="${esc(v)}" placeholder="${esc(fd.ph||"")}" ${fd.type==="text"||!fd.type?'autocomplete="off"':""}>`;
+    return fd.type==="kind"?`<div class="field"><span>${esc(fd.label)}</span>${inp}</div>`:`<label class="field" for="${id}"><span>${esc(fd.label)}</span>${inp}${fd.hint?`<small>${esc(fd.hint)}</small>`:""}</label>`;
+  }).join("");
+  $("#sheetBody").innerHTML=`<h2 id="sheetTitle">${esc(title)}</h2><form id="sheetForm">${f}${extra}
+   <div class="sactions">${onDelete?`<button type="button" class="btn r" id="delBtn">${esc(deleteLabel)}</button>`:""}<span class="sp"></span><button type="button" class="btn w" data-close>取消</button>${onSave?`<button type="submit" class="btn g">${esc(saveLabel)}</button>`:""}</div></form>`;
+  $("#sheet").hidden=false;document.body.style.overflow="hidden";
+  setTimeout(()=>{$(".spanel").focus()},60);
+}
+function closeSheet(){$("#sheet").hidden=true;document.body.style.overflow="";sheetSave=sheetDelete=null}
+$("#sheet").addEventListener("click",e=>{
+  if(e.target.closest("[data-close]")){closeSheet();return}
+  if(e.target.id==="delBtn"){if(!delArmed&&!noArm){delArmed=true;e.target.textContent="再按一次確認刪除";return}const fn=sheetDelete;closeSheet();fn&&fn()}
+});
+$("#sheet").addEventListener("submit",e=>{
+  e.preventDefault();const fd=new FormData(e.target),v={};fd.forEach((val,k)=>v[k]=String(val).trim());
+  const fn=sheetSave;if(fn&&fn(v)!==false)closeSheet();
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden)closeSheet()});
+
+const STOP_FIELDS=[
+  {k:"time",label:"時間",type:"time"},
+  {k:"title",label:"行程名稱",ph:"例如：小樽運河"},
+  {k:"kind",label:"類型",type:"kind",options:[["fixed","已訂好"],["star","重點"],["flex","可調整"]]},
+  {k:"note",label:"備註",type:"textarea",ph:"每行開頭打「-」會變成清單",hint:"每行開頭打「-」會變成項目符號；貼上網址會變成連結"},
+  {k:"place",label:"地點（給 Google 地圖搜尋）",ph:"例如：Otaru Canal",hint:"填英文或日文名稱比較準確"}];
+const findDay=id=>state.days.find(d=>d.id===id);
+const commit=()=>{state.sample&&(state.sample=false);save();rerender()};
+
+/* ---------- actions ---------- */
+const ACT={
+  toggleStop(el){const s=findDay(el.dataset.day).stops.find(x=>x.id===el.dataset.id);s.done=el.checked;save();render(cur,{quiet:true})},
+  toggleItem(el){const l=state.lists.find(x=>x.id===el.dataset.list),it=l.items.find(x=>x.id===el.dataset.id);it.done=el.checked;save();render(cur,{quiet:true})},
+  editTrip(){const t=state.trip;openSheet({title:"旅程名稱與日期",values:t,fields:[
+    {k:"title",label:"旅程名稱",ph:"例如：北海道家族旅行"},{k:"subtitle",label:"副標題",ph:"例如：札幌・小樽 五日"},
+    {k:"start",label:"出發日期",type:"date"},{k:"end",label:"回程日期",type:"date"},{k:"people",label:"同行的人",ph:"例如：爸爸、媽媽、我"}],
+    extra:t.dest?"":`<p class="hint">想看當地天氣、時差、匯率？儲存後到「天氣匯率」頁設定目的地。</p>`,
+    onSave(v){Object.assign(state.trip,v);commit()}})},
+  keepSample(){state.sample=false;save();rerender();toast("好的，直接修改範例吧")},
+  askClear(){openSheet({title:"清空所有資料？",fields:[],extra:`<p style="color:var(--muted);margin:0">所有行程、清單、資訊都會刪除，沒辦法復原。建議先到「備份」頁匯出備份。</p>`,
+    onDelete(){state=blank(state.look);save();editing=true;document.body.classList.add("editing");$("#fabtxt").textContent="✓ 完成";renderHead();render(state.days[0].id);toast("已清空，先填旅程名稱和日期");setTimeout(()=>ACT.editTrip(),300)},deleteLabel:"清空",confirm:true})},
+  askSample(){openSheet({title:"載入北海道範例？",fields:[],extra:`<p style="color:var(--muted);margin:0">會取代目前的行程。建議先匯出備份。</p>`,onDelete(){const lk=state.look;state=migrate(sample());state.look=lk;save();applyLook();renderHead();render(state.days[0].id);toast("已載入範例")},deleteLabel:"載入範例",confirm:true})},
+  addDay(){const last=state.days[state.days.length-1];let date="";if(last&&last.date){const d=new Date(last.date+"T00:00:00");d.setDate(d.getDate()+1);date=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+    const nd={id:uid(),date,label:`第 ${state.days.length+1} 天`,title:"",intro:"",stops:[]};state.days.push(nd);commit();render(nd.id);ACT.editDay({dataset:{id:nd.id}})},
+  editDay(el){const d=findDay(el.dataset.id);openSheet({title:"修改這一天",values:d,fields:[
+    {k:"date",label:"日期",type:"date"},{k:"label",label:"分頁上的短名稱",ph:"例如：小樽",hint:"顯示在上方分頁，2–4 個字最好看"},
+    {k:"title",label:"標題",ph:"例如：小樽運河一日"},{k:"intro",label:"這一天的簡介",type:"textarea",ph:"例如：JR 到小樽，傍晚看運河點燈"},
+    {k:"icon",label:"這一天的小圖示",type:"select",options:ICON_OPTS}],
+    onSave(v){Object.assign(d,v);commit()},
+    onDelete:state.days.length>1?()=>{const i=state.days.indexOf(d);state.days.splice(i,1);commit();render((state.days[i]||state.days[i-1]).id);toast("已刪除這一天")}:null,deleteLabel:"刪除這一天"})},
+  moveDay(el){const i=state.days.findIndex(d=>d.id===el.dataset.id),j=i+ +el.dataset.dir;if(j<0||j>=state.days.length)return;[state.days[i],state.days[j]]=[state.days[j],state.days[i]];commit()},
+  addStop(el){const d=findDay(el.dataset.day);openSheet({title:"新增行程",values:{kind:"fixed"},fields:STOP_FIELDS,
+    onSave(v){if(!v.title&&!v.time){toast("至少填一個行程名稱");return false}d.stops.push({id:uid(),done:false,...v,kind:v.kind||"fixed"});sortStops(d);commit()}})},
+  editStop(el){const d=findDay(el.dataset.day),s=d.stops.find(x=>x.id===el.dataset.id);openSheet({title:"修改行程",values:s,fields:STOP_FIELDS,
+    onSave(v){const t=s.time;Object.assign(s,v);if(v.time!==t)sortStops(d);commit()},onDelete(){d.stops.splice(d.stops.indexOf(s),1);commit();toast("已刪除行程")},deleteLabel:"刪除這個行程"})},
+  moveStop(el){const d=findDay(el.dataset.day),i=d.stops.findIndex(s=>s.id===el.dataset.id),j=i+ +el.dataset.dir;if(j<0||j>=d.stops.length)return;[d.stops[i],d.stops[j]]=[d.stops[j],d.stops[i]];commit()},
+  editList(el){const l=state.lists.find(x=>x.id===el.dataset.id);openSheet({title:"清單名稱",values:l,fields:[{k:"title",label:"名稱"}],onSave(v){l.title=v.title||l.title;commit()},
+    onDelete(){state.lists.splice(state.lists.indexOf(l),1);commit();toast("已刪除清單")},deleteLabel:"刪除整份清單"})},
+  addList(){openSheet({title:"新增清單",fields:[{k:"title",label:"名稱",ph:"例如：代買清單"}],onSave(v){state.lists.push({id:uid(),title:v.title||"新清單",items:[]});commit()}})},
+  editItem(el,e){e&&e.preventDefault();const l=state.lists.find(x=>x.id===el.dataset.list),it=l.items.find(x=>x.id===el.dataset.id);
+    openSheet({title:"修改項目",values:it,fields:[{k:"text",label:"項目"},{k:"note",label:"備註",type:"textarea"}],onSave(v){Object.assign(it,v);commit()},
+    onDelete(){l.items.splice(l.items.indexOf(it),1);commit()},deleteLabel:"刪除項目"})},
+  addGroup(){openSheet({title:"新增分類",fields:[{k:"title",label:"名稱",ph:"例如：租車、保險"}],onSave(v){state.info.push({id:uid(),title:v.title||"新分類",rows:[]});commit()}})},
+  editGroup(el){const g=state.info.find(x=>x.id===el.dataset.id);openSheet({title:"分類名稱",values:g,fields:[{k:"title",label:"名稱"}],onSave(v){g.title=v.title||g.title;commit()},
+    onDelete(){state.info.splice(state.info.indexOf(g),1);commit()},deleteLabel:"刪除整個分類"})},
+  addRow(el){const g=state.info.find(x=>x.id===el.dataset.group);openSheet({title:"新增資料",values:{kind:"text"},fields:ROW_FIELDS,onSave(v){g.rows.push({id:uid(),...v});commit()}})},
+  editRow(el){const g=state.info.find(x=>x.id===el.dataset.group),r=g.rows.find(x=>x.id===el.dataset.id);openSheet({title:"修改資料",values:r,fields:ROW_FIELDS,onSave(v){Object.assign(r,v);commit()},
+    onDelete(){g.rows.splice(g.rows.indexOf(r),1);commit()},deleteLabel:"刪除這一行"})},
+  copy(el){const t=el.dataset.text;const ok=()=>toast("已複製");try{navigator.clipboard.writeText(t).then(ok,()=>toast("請長按文字複製"))}catch(e){toast("請長按文字複製")}},
+  instTab(el){installTab=el.dataset.k;render(cur,{quiet:true})},
+  toggleProd(el){const it=prodArr(el.dataset.kind).find(x=>x.id===el.dataset.id);it.done=el.checked;save();render(cur,{quiet:true})},
+  addProd(el){const k=el.dataset.kind;openSheet({title:k==="errand"?"新增代買項目":"新增伴手禮",fields:PROD_FIELDS,values:{},
+    onSave(v){if(!v.title){toast("請填品名");return false}return withImg(v,null).then(()=>{prodArr(k).push({id:uid(),done:false,...v});commit();closeSheet()}).then(()=>false)}})},
+  editProd(el){const k=el.dataset.kind,arr=prodArr(k),it=arr.find(x=>x.id===el.dataset.id);openSheet({title:"修改",fields:PROD_FIELDS,values:it,
+    onSave(v){return withImg(v,it).then(()=>{Object.assign(it,v);commit();closeSheet()}).then(()=>false)},onDelete(){arr.splice(arr.indexOf(it),1);commit()},deleteLabel:"刪除這一項"})},
+  moveProd(el){const arr=prodArr(el.dataset.kind),i=arr.findIndex(x=>x.id===el.dataset.id),j=i+ +el.dataset.dir;if(j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];commit()},
+  addPlace(){openSheet({title:"新增購買地點",fields:PLACE_FIELDS,onSave(v){state.gifts.places.push({id:uid(),...v});commit()}})},
+  editPlace(el){const arr=state.gifts.places,w=arr.find(x=>x.id===el.dataset.id);openSheet({title:"修改購買地點",fields:PLACE_FIELDS,values:w,onSave(v){Object.assign(w,v);commit()},onDelete(){arr.splice(arr.indexOf(w),1);commit()},deleteLabel:"刪除地點"})},
+  addNote(){openSheet({title:"新增注意事項",fields:NOTE_FIELDS,onSave(v){state.notes.push({id:uid(),...v});commit()}})},
+  editNote(el){const n=state.notes.find(x=>x.id===el.dataset.id);openSheet({title:"修改注意事項",fields:NOTE_FIELDS,values:n,onSave(v){Object.assign(n,v);commit()},onDelete(){state.notes.splice(state.notes.indexOf(n),1);commit()},deleteLabel:"刪除"})},
+  moveNote(el){const arr=state.notes,i=arr.findIndex(x=>x.id===el.dataset.id),j=i+ +el.dataset.dir;if(j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];commit()},
+  export(){doExport()},
+  setDest(){geoRes=[];openSheet({title:"設定目的地",fields:[{k:"q",label:"城市名稱",ph:"例如：札幌、首爾、Bangkok",hint:"中文或英文都可以；找不到時試試英文"}],
+    extra:`<div id="geoRes" class="georesults"></div>`,saveLabel:"搜尋",onSave(v){searchGeo(v.q);return false}})},
+  pickDest(el){const r=geoRes[+el.dataset.i];if(!r)return;const t=state.trip;
+    t.dest={name:r.name,label:[r.name,r.admin1,r.country].filter(Boolean).join("・"),lat:r.latitude,lon:r.longitude,tz:r.timezone||"UTC",cc:r.country_code||""};
+    if(CUR[t.dest.cc])t.cur=CUR[t.dest.cc];closeSheet();commit();toast("目的地："+r.name);refreshLive(true)},
+  reloadLive(){refreshLive(true)},
+  setCur(){const t=state.trip;openSheet({title:"幣別",values:{cur:t.cur||"",home:t.home||"TWD"},fields:[
+    {k:"cur",label:"當地貨幣（3 個英文字母）",ph:"例如：JPY",hint:"日圓 JPY・韓元 KRW・泰銖 THB・越南盾 VND・歐元 EUR・美元 USD"},
+    {k:"home",label:"你的貨幣",ph:"TWD",hint:"新台幣 TWD"}],
+    onSave(v){const a=v.cur.toUpperCase(),b=(v.home||"TWD").toUpperCase();if((a&&!/^[A-Z]{3}$/.test(a))||!/^[A-Z]{3}$/.test(b)){toast("請填 3 個英文字母，例如 JPY");return false}
+      t.cur=a;t.home=b;commit();refreshLive(true)}})},
+  setPal(el){state.look.palette=el.dataset.k;save();applyLook();render(cur,{quiet:true})},
+  setHero(el){const k=el.dataset.k;if(k==="photo"&&!state.look.heroImg){ACT.pickHero();return}state.look.hero=k;save();applyLook();render(cur,{quiet:true})},
+  pickHero(){$("#heroFile").value="";$("#heroFile").click()},
+  setIcons(el){state.look.icons=el.dataset.k;save();rerender()},
+  import(){$("#importFile").value="";$("#importFile").click()}
+};
+const PROD_FIELDS=[{k:"title",label:"品名",ph:"例如：Royce 生巧克力"},{k:"en",label:"外文名稱（到店裡好找）",ph:"例如：ROYCE' Nama Chocolate"},
+  {k:"img",label:"照片",type:"image",hint:"可以上傳商品照片或截圖，會自動縮小"},
+  {k:"who",label:"給誰",ph:"例如：小美、同事"},{k:"qty",label:"數量",ph:"例如：2 盒"},
+  {k:"price",label:"價格",ph:"例如：台灣蝦皮參考價 NT$500"},{k:"where",label:"去哪買",ph:"例如：新千歲機場"},
+  {k:"note",label:"備註",type:"textarea",ph:"每行開頭打「-」會變成清單"}];
+const PLACE_FIELDS=[{k:"name",label:"地點",ph:"例如：新千歲機場"},{k:"when",label:"什麼時候去",ph:"例如：最後一天"},{k:"best",label:"適合買",ph:"例如：一次買齊"},{k:"note",label:"說明",type:"textarea"}];
+const NOTE_FIELDS=[{k:"title",label:"標題",ph:"例如：JR Pass 兌換"},{k:"tag",label:"小標籤",ph:"例如：已購買"},{k:"body",label:"內容",type:"textarea",ph:"每行開頭打「-」會變成清單"}];
+function shrink(file,m=480,q=.72){return new Promise((res,rej)=>{const r=new FileReader();r.onerror=rej;r.onload=()=>{const im=new Image();im.onerror=rej;im.onload=()=>{const sc=Math.min(1,m/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",q))};im.src=r.result};r.readAsDataURL(file)})}
+function withImg(v,old){
+  const f=$("#f_img"),rm=$("#f_img_rm");delete v.img;delete v.img_rm;
+  if(rm&&rm.checked){v.img="";return Promise.resolve()}
+  if(f&&f.files&&f.files[0])return shrink(f.files[0]).then(d=>{v.img=d}).catch(()=>{toast("這張照片讀不到，換一張試試");v.img=old?old.img:""});
+  v.img=old?old.img:"";return Promise.resolve();
+}
+const ROW_FIELDS=[{k:"label",label:"名稱",ph:"例如：去程航班、飯店"},{k:"value",label:"內容",type:"textarea",ph:"例如：CI130 桃園 09:30 → 新千歲 14:00"},
+  {k:"kind",label:"類型",type:"select",options:[["text","一般文字"],["map","地址（可開地圖）"],["phone","電話"],["link","網址"]]}];
+function sortStops(d){d.stops.sort((a,b)=>(a.time||"99").localeCompare(b.time||"99"))}
+
+document.addEventListener("click",e=>{
+  const g=e.target.closest("[data-go]");if(g){go(g.dataset.go);return}
+  const t=e.target.closest(".tab[data-id]");if(t){go(t.dataset.id);return}
+  const a=e.target.closest("[data-act]");if(!a||a.tagName==="FORM")return;
+  const fn=ACT[a.dataset.act];if(!fn)return;
+  if(a.type==="checkbox"){fn(a);return}
+  if(a.closest("label.item")&&a.dataset.act==="editItem"){fn(a,e);return}
+  fn(a,e);
+});
+document.addEventListener("change",e=>{const a=e.target.closest('input[type=checkbox][data-act]');if(a&&e.type==="change"){}});
+document.addEventListener("submit",e=>{
+  const n=e.target.closest('form[data-act="setName"]');
+  if(n){e.preventDefault();state.look.appName=n.querySelector("input").value.trim()||"旅行手帖";save();applyLook();render(cur,{quiet:true});toast("名稱已更改");return}
+  const f=e.target.closest('form[data-act="quickAdd"]');if(!f)return;e.preventDefault();
+  const inp=f.querySelector("input"),v=inp.value.trim();if(!v)return;
+  const l=state.lists.find(x=>x.id===f.dataset.list);l.items.push({id:uid(),text:v,note:"",done:false});state.sample=false;save();render(cur,{quiet:true});
+  const again=document.getElementById("q_"+l.id);again&&again.focus();
+});
+
+/* edit toggle */
+$("#fab").addEventListener("click",()=>{editing=!editing;document.body.classList.toggle("editing",editing);$("#fabtxt").textContent=editing?"✓ 完成":"✎ 編輯";rerender();if(!editing)toast("已儲存在這台裝置")});
+
+/* ---------- backup ---------- */
+async function doExport(){
+  const data=JSON.stringify({app:"tripnote",exported:new Date().toISOString(),version:APP_VERSION,data:state},null,2);
+  const d=new Date(),name=`${(state.trip.title||"旅程").replace(/[\\/:*?"<>|]/g,"")}-備份-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}.json`;
+  const file=new File([data],name,{type:"application/json"});
+  if(navigator.canShare&&/iPhone|iPad|Android/.test(navigator.userAgent)&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:name});toast("已匯出備份");return}catch(e){if(e&&e.name==="AbortError")return}
+  }
+  const url=URL.createObjectURL(file),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);toast("已下載備份檔");
+}
+$("#importFile").addEventListener("change",e=>{
+  const f=e.target.files&&e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const j=JSON.parse(r.result),d=j&&j.data?j.data:j;if(!valid(d))throw 0;
+      openSheet({title:"匯入這份備份？",fields:[],extra:`<p style="margin:0">「${esc(d.trip.title||"旅程")}」，共 ${d.days.length} 天。<br><span style="color:var(--muted)">會取代這台裝置上目前的行程。</span></p>`,
+       onDelete(){if(!d.look)d.look=state.look;state=migrate(d);save();applyLook();renderHead();render(state.days[0]?state.days[0].id:"lists");toast("匯入完成")},deleteLabel:"確定匯入",confirm:true})}
+    catch(err){toast("這個檔案不是這個 App 的備份檔")}};
+  r.readAsText(f);
+});
+
+/* swipe between pages */
+let tx=null,ty=null;
+$("#main").addEventListener("touchstart",e=>{const t=e.changedTouches[0];tx=t.clientX;ty=t.clientY},{passive:true});
+$("#main").addEventListener("touchend",e=>{if(tx===null)return;const t=e.changedTouches[0],dx=t.clientX-tx,dy=t.clientY-ty;tx=null;
+  if(Math.abs(dx)>70&&Math.abs(dy)<45){const all=tabsAll(),i=all.findIndex(x=>x.id===cur),n=all[i+(dx<0?1:-1)];if(n)go(n.id)}},{passive:true});
+addEventListener("resize",()=>moveWalker(null));
+try{document.fonts.ready.then(()=>moveWalker(null))}catch(e){}
+setInterval(tick,30000);
+
+$("#heroFile").addEventListener("change",e=>{
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  shrink(f,1200,.78).then(d=>{const L=state.look,old=[L.heroImg,L.hero];L.heroImg=d;L.hero="photo";save();
+    if(!saveOK){L.heroImg=old[0];L.hero=old[1];save();toast("照片太大存不下，換一張試試");return}
+    applyLook();render(cur,{quiet:true});toast("封面照片已更換")}).catch(()=>toast("這張照片讀不到，換一張試試"));
+});
+addEventListener("online",()=>refreshLive(false));
+
+/* ---------- start ---------- */
+applyLook();
+renderHead();
+(function(){let start=null;try{start=localStorage.getItem("tripnote:tab")}catch(e){}
+  const today=state.days.find(d=>d.date===todayIso());render(today?today.id:(start||state.days[0].id))})();
+setTimeout(()=>refreshLive(false),1500);
+try{const pv=localStorage.getItem("tripnote:ver");if((pv&&pv!==APP_VERSION)||(!pv&&hadData))setTimeout(()=>toast(`已更新到版本 ${APP_VERSION}，到「設定」頁看更新內容`),900);localStorage.setItem("tripnote:ver",APP_VERSION)}catch(e){}
+
+/* ---------- offline + updates ---------- */
+if("serviceWorker" in navigator&&location.protocol.startsWith("http")){
+  navigator.serviceWorker.register("sw.js").then(reg=>{
+    const show=w=>{const b=$("#updateBtn");b.hidden=false;b.onclick=()=>{w.postMessage("skipWaiting")}};
+    if(reg.waiting&&navigator.serviceWorker.controller)show(reg.waiting);
+    reg.addEventListener("updatefound",()=>{const w=reg.installing;w&&w.addEventListener("statechange",()=>{if(w.state==="installed"&&navigator.serviceWorker.controller)show(w)})});
+    setInterval(()=>reg.update().catch(()=>{}),60*60*1000);
+  }).catch(()=>{});
+  let reloaded=false;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(reloaded)return;reloaded=true;location.reload()});
+}
+</script>
+</body>
+</html>

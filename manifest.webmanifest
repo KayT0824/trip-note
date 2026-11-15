@@ -1,0 +1,16 @@
+{
+  "name": "雪旅手帖",
+  "short_name": "雪旅手帖",
+  "description": "可以自己編輯、離線使用的旅行行程手帖",
+  "lang": "zh-Hant",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F7FAFD",
+  "theme_color": "#F7FAFD",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
