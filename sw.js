@@ -1,7 +1,7 @@
 /* 旅行手帖 service worker
    每次更新 index.html，請把下面的版本號改成跟 index.html 裡的 APP_VERSION 一樣，
    使用者打開 App 時才會出現「有新版本，點這裡更新」。 */
-const CACHE = "tripnote-2.1.0";
+const CACHE = "tripnote-2.2.1";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
@@ -27,7 +27,7 @@ self.addEventListener("fetch", e => {
   const url = new URL(req.url);
 
   // 天氣、匯率、地點搜尋：一律走網路，不存快取（App 自己會記住上次的結果）
-  if (/open-meteo\.com|er-api\.com/.test(url.hostname)) return;
+  if (/open-meteo\.com|er-api\.com|met\.no|openstreetmap\.org/.test(url.hostname)) return;
 
   // 字型：先用快取，沒有再下載
   if (/fonts\.(googleapis|gstatic)\.com/.test(url.hostname)) {
