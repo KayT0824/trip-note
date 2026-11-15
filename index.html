@@ -271,7 +271,7 @@ body.editing .fab{background:var(--pine)}
 .wxnow b{font-family:var(--f-display);font-weight:400;font-size:22px}
 .wxnow small{display:block;color:var(--muted);font-size:12px}
 .wxlist{display:grid;margin-top:10px;border:2px solid var(--soft);border-radius:var(--r-sm);overflow:hidden}
-.wxrow{display:grid;grid-template-columns:62px 26px minmax(0,1fr) auto 48px;gap:6px;align-items:center;padding:5px 10px;font-size:14px;border-top:1px solid var(--soft)}
+.wxrow{display:grid;grid-template-columns:62px 26px minmax(0,1fr) auto 58px;gap:6px;align-items:center;padding:5px 10px;font-size:14px;border-top:1px solid var(--soft)}
 .wxrow:first-child{border-top:0}
 .wxrow.trip{background:var(--lamp)}
 .wxrow .d{font-variant-numeric:tabular-nums;font-size:13px;white-space:nowrap}
@@ -401,9 +401,9 @@ body.editing .fab{background:var(--pine)}
 
 <script>
 "use strict";
-const APP_VERSION="2.1.0";
+const APP_VERSION="2.2.0";
 /* 每次更新：改 APP_VERSION、改下面的更新內容，並把 sw.js 的 CACHE 版本號一起改掉 */
-const CHANGES=["改旅程日期時，每一天的日期會自動跟著更新，天數不夠會自動補上","匯率改用臺灣銀行牌告匯率，並標示資料來源","天氣載入失敗時會清楚顯示原因，可以重試","通用版：不限目的地，任何旅行都能用","新增「天氣匯率」頁：當地天氣預報、時差、匯率換算","設定頁可以換 App 名稱、配色、封面圖片、每天的小圖示","伴手禮和代買可以一鍵搜尋商品"];
+const CHANGES=["天氣加入備用來源（挪威氣象局），原本的來源連不上時會自動切換","設定目的地：內建常去的城市，不用等搜尋；也可以手動更改時區","改旅程日期時，每一天的日期會自動跟著更新，天數不夠會自動補上","匯率改用臺灣銀行牌告匯率，並標示資料來源","天氣載入失敗時會清楚顯示原因，可以重試","通用版：不限目的地，任何旅行都能用","新增「天氣匯率」頁：當地天氣預報、時差、匯率換算","設定頁可以換 App 名稱、配色、封面圖片、每天的小圖示","伴手禮和代買可以一鍵搜尋商品"];
 const KEY="tripnote:data";
 const WK=["日","一","二","三","四","五","六"];
 const hadData=(()=>{try{return !!localStorage.getItem(KEY)}catch(e){return false}})();
@@ -425,7 +425,7 @@ const DEF_LOOK=()=>({appName:"旅行手帖",palette:"snow",hero:"snow",heroImg:"
 const OLD_LOOK=()=>Object.assign(DEF_LOOK(),{appName:"雪旅手帖"});
 
 /* ---------- live data: currency + weather codes ---------- */
-const CUR={JP:"JPY",KR:"KRW",TH:"THB",VN:"VND",SG:"SGD",MY:"MYR",HK:"HKD",MO:"MOP",CN:"CNY",TW:"TWD",PH:"PHP",ID:"IDR",KH:"KHR",LA:"LAK",MM:"MMK",IN:"INR",MN:"MNT",US:"USD",CA:"CAD",MX:"MXN",GB:"GBP",CH:"CHF",CZ:"CZK",HU:"HUF",PL:"PLN",DK:"DKK",SE:"SEK",NO:"NOK",IS:"ISK",TR:"TRY",AE:"AED",EG:"EGP",AU:"AUD",NZ:"NZD",FR:"EUR",DE:"EUR",IT:"EUR",ES:"EUR",NL:"EUR",AT:"EUR",BE:"EUR",PT:"EUR",GR:"EUR",FI:"EUR",IE:"EUR",LU:"EUR",HR:"EUR",SI:"EUR",SK:"EUR",EE:"EUR",LV:"EUR",LT:"EUR",MT:"EUR",CY:"EUR"};
+const CUR={GU:"USD",PW:"USD",JP:"JPY",KR:"KRW",TH:"THB",VN:"VND",SG:"SGD",MY:"MYR",HK:"HKD",MO:"MOP",CN:"CNY",TW:"TWD",PH:"PHP",ID:"IDR",KH:"KHR",LA:"LAK",MM:"MMK",IN:"INR",MN:"MNT",US:"USD",CA:"CAD",MX:"MXN",GB:"GBP",CH:"CHF",CZ:"CZK",HU:"HUF",PL:"PLN",DK:"DKK",SE:"SEK",NO:"NOK",IS:"ISK",TR:"TRY",AE:"AED",EG:"EGP",AU:"AUD",NZ:"NZD",FR:"EUR",DE:"EUR",IT:"EUR",ES:"EUR",NL:"EUR",AT:"EUR",BE:"EUR",PT:"EUR",GR:"EUR",FI:"EUR",IE:"EUR",LU:"EUR",HR:"EUR",SI:"EUR",SK:"EUR",EE:"EUR",LV:"EUR",LT:"EUR",MT:"EUR",CY:"EUR"};
 const WX={0:["☀️","晴"],1:["🌤️","晴時多雲"],2:["⛅","多雲"],3:["☁️","陰"],45:["🌫️","霧"],48:["🌫️","霧凇"],51:["🌦️","毛毛雨"],53:["🌦️","毛毛雨"],55:["🌧️","毛毛雨"],56:["🌧️","凍雨"],57:["🌧️","凍雨"],61:["🌦️","小雨"],63:["🌧️","雨"],65:["🌧️","大雨"],66:["🌧️","凍雨"],67:["🌧️","凍雨"],71:["🌨️","小雪"],73:["🌨️","雪"],75:["❄️","大雪"],77:["🌨️","霰"],80:["🌦️","陣雨"],81:["🌧️","陣雨"],82:["⛈️","強陣雨"],85:["🌨️","陣雪"],86:["❄️","強陣雪"],95:["⛈️","雷雨"],96:["⛈️","雷雨冰雹"],99:["⛈️","雷雨冰雹"]};
 const wxE=c=>(WX[c]||["🌡️",""])[0],wxT=c=>(WX[c]||["",""])[1];
 
@@ -626,17 +626,58 @@ let live={};try{live=JSON.parse(localStorage.getItem(LKEY)||"{}")||{}}catch(e){l
 function saveLive(){try{localStorage.setItem(LKEY,JSON.stringify(live))}catch(e){}}
 const destKey=()=>{const D=state.trip.dest;return D?`${(+D.lat).toFixed(2)},${(+D.lon).toFixed(2)}`:""};
 const fxKey=()=>`${state.trip.cur}>${state.trip.home}`;
+function rainTxt(dl,i){const pp=dl.precipitation_probability_max,mm=dl.precipitation_sum;
+  if(pp&&pp[i]!=null)return "💧"+pp[i]+"%";if(mm&&mm[i]!=null)return mm[i]>0?"☔"+mm[i]+"mm":"☔0";return ""}
 function wxFor(iso){
   const w=live.w;if(!w||!iso||w.key!==destKey()||!w.daily)return null;
   const i=w.daily.time.indexOf(iso);if(i<0)return null;
-  const pp=w.daily.precipitation_probability_max;
-  return {code:w.daily.weather_code[i],max:w.daily.temperature_2m_max[i],min:w.daily.temperature_2m_min[i],pop:pp?pp[i]:null};
+  return {code:w.daily.weather_code[i],max:w.daily.temperature_2m_max[i],min:w.daily.temperature_2m_min[i],rain:rainTxt(w.daily,i)};
 }
-function getJSON(url){
-  const c=new AbortController(),t=setTimeout(()=>c.abort(),12000);
+function getJSON(url,ms=12000){
+  const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);
   return fetch(url,{signal:c.signal,cache:"no-store"}).then(r=>{clearTimeout(t);if(!r.ok)throw new Error(r.status);return r.json()});
 }
 const shortTime=ms=>new Date(ms).toLocaleString("zh-TW",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
+/* 天氣：兩個來源，一個連不上就換另一個，並記住上次成功的那個 */
+function metCode(sym){
+  const b=String(sym||"").replace(/_(day|night|polartwilight)$/,""),sh=b.includes("showers"),th=b.includes("thunder");
+  if(b==="clearsky")return 0;if(b==="fair")return 1;if(b==="partlycloudy")return 2;if(b==="cloudy")return 3;if(b==="fog")return 45;
+  if(th)return 95;
+  if(b.includes("sleet"))return 66;
+  if(b.includes("snow"))return sh?(b.startsWith("heavy")?86:85):b.startsWith("light")?71:b.startsWith("heavy")?75:73;
+  if(b.includes("rain"))return sh?(b.startsWith("light")?80:b.startsWith("heavy")?82:81):b.startsWith("light")?61:b.startsWith("heavy")?65:63;
+  return 3;
+}
+function metno(j,tz){
+  const ts=j&&j.properties&&j.properties.timeseries;if(!Array.isArray(ts)||!ts.length)throw new Error("mn");
+  let f;try{f=new Intl.DateTimeFormat("en-CA",{timeZone:tz,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",hourCycle:"h23"})}catch(e){f=new Intl.DateTimeFormat("en-CA",{timeZone:"UTC",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",hourCycle:"h23"})}
+  const days=new Map();let cur=null;
+  ts.forEach(e=>{
+    const d=e.data||{},t=d.instant&&d.instant.details?d.instant.details.air_temperature:null;if(t==null)return;
+    const nx=d.next_1_hours||d.next_6_hours||d.next_12_hours,sym=nx&&nx.summary?nx.summary.symbol_code:null;
+    const o={};f.formatToParts(new Date(e.time)).forEach(x=>o[x.type]=x.value);
+    const iso=`${o.year}-${o.month}-${o.day}`,hr=+o.hour;
+    if(!cur)cur={temperature_2m:t,apparent_temperature:null,weather_code:metCode(sym)};
+    let g=days.get(iso);if(!g){g={max:t,min:t,dist:99,code:3,pop:null,mm:0};days.set(iso,g)}
+    const pd=(d.next_1_hours||d.next_6_hours||{}).details||{};
+    if(pd.probability_of_precipitation!=null)g.pop=Math.max(g.pop==null?0:g.pop,pd.probability_of_precipitation);
+    if(pd.precipitation_amount!=null)g.mm+=pd.precipitation_amount;
+    g.max=Math.max(g.max,t);g.min=Math.min(g.min,t);
+    const s6=d.next_6_hours&&d.next_6_hours.summary?d.next_6_hours.summary.symbol_code:sym,ds=Math.abs(hr-11);
+    if(s6&&ds<g.dist){g.dist=ds;g.code=metCode(s6)}
+  });
+  const k=[...days.keys()];
+  return {cur,daily:{time:k,weather_code:k.map(x=>days.get(x).code),temperature_2m_max:k.map(x=>days.get(x).max),temperature_2m_min:k.map(x=>days.get(x).min),precipitation_probability_max:k.some(x=>days.get(x).pop!=null)?k.map(x=>{const v=days.get(x).pop;return v==null?null:Math.round(v)}):null,precipitation_sum:k.map(x=>Math.round(days.get(x).mm*10)/10)}};
+}
+async function loadWx(D,k){
+  const om=()=>getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${D.lat}&longitude=${D.lon}&current=temperature_2m,apparent_temperature,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=16`,7000)
+    .then(j=>{if(!j||!j.daily)throw new Error("om");live.w={key:k,at:Date.now(),src:"om",cur:j.current||null,daily:j.daily}});
+  const mn=()=>getJSON(`https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=${(+D.lat).toFixed(4)}&lon=${(+D.lon).toFixed(4)}`,10000)
+    .then(j=>{live.w=Object.assign({key:k,at:Date.now(),src:"mn"},metno(j,D.tz))});
+  const order=live.wsrc==="om"?[om,mn]:[mn,om];
+  try{await order[0]()}catch(e){await order[1]()}
+  live.wsrc=live.w.src;
+}
 async function loadFx(t,fk){
   /* 先讀同一個網站上的 rates.json（GitHub 每天自動從臺灣銀行牌告匯率抓下來）；讀不到才用國際參考匯率 */
   if(t.home==="TWD"&&location.protocol.startsWith("http")){
@@ -656,8 +697,7 @@ async function refreshLive(force){
   if(!needW&&!needF)return;
   liveBusy=true;liveMsg="更新中…";paintLive();
   const jobs=[];
-  if(needW)jobs.push(getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${D.lat}&longitude=${D.lon}&current=temperature_2m,apparent_temperature,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=16`)
-    .then(j=>{if(!j||!j.daily)throw new Error("wx");live.w={key:k,at:Date.now(),cur:j.current||null,daily:j.daily};wxErr=false}).catch(e=>{wxErr=true;throw e}));
+  if(needW)jobs.push(loadWx(D,k).then(()=>{wxErr=false},e=>{wxErr=true;throw e}));
   if(needF)jobs.push(loadFx(t,fk));
   const res=await Promise.allSettled(jobs);liveBusy=false;saveLive();
   liveMsg=res.some(r=>r.status==="rejected")?"有些資料沒有更新成功，等一下再按「立即更新」試試":"";
@@ -711,7 +751,7 @@ function renderTabs(){
 function renderDay(d,idx){
   const n=d.stops.length,c=d.stops.filter(s=>s.done).length;
   const w=wxFor(d.date);
-  let h=`<div class="dayhead"><div class="hl">${ico(dayIcon(idx,state.days.length,d),"mascot")}<h2>${esc(fmtDate(d.date)?fmtDate(d.date)+"・":"")}${esc(d.title||d.label||"")}</h2></div><div class="chips">${w?`<span class="wx" title="${esc(state.trip.dest.name)}天氣預報">${wxE(w.code)} ${Math.round(w.max)}° / ${Math.round(w.min)}°${w.pop!=null?` 💧${w.pop}%`:""}</span>`:""}${n?`<span class="progress">${c} / ${n} 完成</span>`:""}</div></div>`;
+  let h=`<div class="dayhead"><div class="hl">${ico(dayIcon(idx,state.days.length,d),"mascot")}<h2>${esc(fmtDate(d.date)?fmtDate(d.date)+"・":"")}${esc(d.title||d.label||"")}</h2></div><div class="chips">${w?`<span class="wx" title="${esc(state.trip.dest.name)}天氣預報">${wxE(w.code)} ${Math.round(w.max)}° / ${Math.round(w.min)}°${w.rain?" "+w.rain:""}</span>`:""}${n?`<span class="progress">${c} / ${n} 完成</span>`:""}</div></div>`;
   if(d.intro)h+=`<p class="dayintro">${esc(d.intro)}</p>`;
   if(editing)h+=`<div class="tools" style="margin:0 0 14px"><button type="button" class="tbtn edit" data-act="editDay" data-id="${d.id}">✎ 修改這一天</button><button type="button" class="tbtn" data-act="moveDay" data-id="${d.id}" data-dir="-1">← 往前移</button><button type="button" class="tbtn" data-act="moveDay" data-id="${d.id}" data-dir="1">往後移 →</button></div>`;
   if(n){
@@ -811,15 +851,15 @@ function wxHtml(){
   const more=`<div class="btnrow"><a class="btn w" href="${searchUrl((t.dest?t.dest.name:"")+" 天氣")}" target="_blank" rel="noopener">🔍 用 Google 查當地天氣</a></div>`;
   if(!w||w.key!==destKey()||!w.daily){
     if(!navigator.onLine)return `<p class="hint">需要網路才能取得天氣，連上網路後會自動更新。</p>`;
-    if(wxErr&&!liveBusy)return `<p class="hint">天氣資料沒有載入成功。可能是網路不穩，或這個網路環境擋住了天氣服務（Open-Meteo）。</p><div class="btnrow"><button type="button" class="btn" data-act="reloadLive">↻ 再試一次</button></div>${more}`;
+    if(wxErr&&!liveBusy)return `<p class="hint">天氣資料沒有載入成功。可能是網路不穩，兩個天氣來源（挪威氣象局、Open-Meteo）目前都連不上。</p><div class="btnrow"><button type="button" class="btn" data-act="reloadLive">↻ 再試一次</button></div>${more}`;
     return `<p class="hint">載入中…（最多等 12 秒）</p>`}
   const end=t.end||t.start,inTrip=iso=>!!t.start&&iso>=t.start&&iso<=end;
   const c=w.cur,pp=w.daily.precipitation_probability_max;let h="";
-  if(c)h+=`<div class="wxnow"><span class="big">${wxE(c.weather_code)}</span><span><b>${Math.round(c.temperature_2m)}°C</b> ${esc(wxT(c.weather_code))}<small>當地現在・體感 ${Math.round(c.apparent_temperature)}°C</small></span></div>`;
-  h+=`<div class="wxlist">${w.daily.time.map((iso,i)=>`<div class="wxrow${inTrip(iso)?" trip":""}"><span class="d">${fmtDate(iso)}</span><span>${wxE(w.daily.weather_code[i])}</span><span class="tx">${esc(wxT(w.daily.weather_code[i]))}</span><span class="tp">${Math.round(w.daily.temperature_2m_max[i])}° / ${Math.round(w.daily.temperature_2m_min[i])}°</span><span class="pp">${pp&&pp[i]!=null?"💧"+pp[i]+"%":""}</span></div>`).join("")}</div>`;
-  if(t.start&&!w.daily.time.some(inTrip))h+=`<p class="hint">行程日期還不在預報範圍內（大約只能看未來兩週），出發前兩週左右就會出現在這裡和每天的行程頁。</p>`;
+  if(c)h+=`<div class="wxnow"><span class="big">${wxE(c.weather_code)}</span><span><b>${Math.round(c.temperature_2m)}°C</b> ${esc(wxT(c.weather_code))}<small>當地現在${c.apparent_temperature!=null?`・體感 ${Math.round(c.apparent_temperature)}°C`:""}</small></span></div>`;
+  h+=`<div class="wxlist">${w.daily.time.map((iso,i)=>`<div class="wxrow${inTrip(iso)?" trip":""}"><span class="d">${fmtDate(iso)}</span><span>${wxE(w.daily.weather_code[i])}</span><span class="tx">${esc(wxT(w.daily.weather_code[i]))}</span><span class="tp">${Math.round(w.daily.temperature_2m_max[i])}° / ${Math.round(w.daily.temperature_2m_min[i])}°</span><span class="pp">${rainTxt(w.daily,i)}</span></div>`).join("")}</div>`;
+  if(t.start&&!w.daily.time.some(inTrip))h+=`<p class="hint">行程日期還不在預報範圍內（只能看未來 9～16 天），出發前一週多就會出現在這裡和每天的行程頁。</p>`;
   else if(t.start)h+=`<p class="hint">黃色底的是行程日期，每天的行程頁上方也會顯示天氣。</p>`;
-  h+=`<p class="hint">更新時間 ${shortTime(w.at)}・資料來源 Open-Meteo（open-meteo.com）</p>${more}`;
+  h+=`<p class="hint">💧 是當天的降雨（雪）機率；較遠的日期沒有機率時，改用 ☔ 顯示預估雨量。</p><p class="hint">更新時間 ${shortTime(w.at)}・資料來源 ${w.src==="mn"?"挪威氣象局 MET Norway（api.met.no）":"Open-Meteo（open-meteo.com）"}</p>${more}`;
   return h;
 }
 function fmtRate(r){return r>=100?r.toFixed(1):r>=10?r.toFixed(2):r>=1?r.toFixed(3):String(+r.toPrecision(4))}
@@ -838,7 +878,7 @@ function renderLive(){
   <p class="dayintro">有網路時會自動更新；沒網路時，顯示上次存下來的資料。</p>`;
   if(!D)return h+`<section class="panel"><h3>先設定目的地</h3><p>輸入要去的城市，就能看到當地的天氣預報、時差和匯率。</p><div class="btnrow"><button type="button" class="btn y" data-act="setDest">📍 設定目的地</button></div></section>`;
   h+=`<section class="panel"><h3>${ico("i-pin")} ${esc(D.label||D.name)}</h3><div class="btnrow"><button type="button" class="btn w" data-act="setDest">更換目的地</button><button type="button" class="btn" data-act="reloadLive">↻ 立即更新</button></div><p class="hint" id="livemsg">${esc(liveMsg)}</p></section>
-  <section class="panel"><h3>時差</h3><div class="clocks"><div><small>${esc(D.name)}</small><b id="clkDest">${clock(D.tz)}</b></div><div><small>台灣</small><b id="clkTW">${clock("Asia/Taipei")}</b></div></div><p>${esc(diffText(D.tz))}</p></section>
+  <section class="panel"><h3>時差</h3><div class="clocks"><div><small>${esc(D.name)}</small><b id="clkDest">${clock(D.tz)}</b></div><div><small>台灣</small><b id="clkTW">${clock("Asia/Taipei")}</b></div></div><p>${esc(diffText(D.tz))}</p><div class="btnrow"><button type="button" class="btn w" data-act="setTz">時間不對？更改時區</button></div></section>
   <section class="panel"><h3>天氣預報</h3><div id="wbox">${wxHtml()}</div></section>
   <section class="panel"><h3>匯率</h3><p class="fxline" id="fxline">${fxLine()}</p>
    ${t.cur&&t.cur!==t.home?`<div class="conv"><label><span>${esc(t.cur)}</span><input id="cvA" inputmode="decimal" placeholder="輸入金額" autocomplete="off"></label><span class="eq">=</span><label><span>${esc(t.home)}</span><input id="cvB" inputmode="decimal" placeholder="換算結果" autocomplete="off"></label></div>`:""}
@@ -859,16 +899,45 @@ function convert(el){
   other.value=out>=100?String(Math.round(out)):out.toFixed(2);
 }
 document.addEventListener("input",e=>{if(e.target.id==="cvA"||e.target.id==="cvB")convert(e.target)});
-let geoRes=[];
+const CITIES=[["東京","Tokyo",35.68,139.69,"Asia/Tokyo","JP","日本"],["大阪","Osaka",34.69,135.5,"Asia/Tokyo","JP","日本"],["京都","Kyoto",35.01,135.77,"Asia/Tokyo","JP","日本"],["札幌","Sapporo",43.06,141.35,"Asia/Tokyo","JP","日本"],["福岡","Fukuoka",33.59,130.4,"Asia/Tokyo","JP","日本"],["名古屋","Nagoya",35.18,136.91,"Asia/Tokyo","JP","日本"],["沖繩那霸","Okinawa Naha",26.21,127.68,"Asia/Tokyo","JP","日本"],
+["首爾","Seoul",37.57,126.98,"Asia/Seoul","KR","韓國"],["釜山","Busan",35.18,129.08,"Asia/Seoul","KR","韓國"],["濟州","Jeju",33.5,126.53,"Asia/Seoul","KR","韓國"],
+["曼谷","Bangkok",13.75,100.5,"Asia/Bangkok","TH","泰國"],["清邁","Chiang Mai",18.79,98.98,"Asia/Bangkok","TH","泰國"],["普吉","Phuket",7.88,98.39,"Asia/Bangkok","TH","泰國"],
+["新加坡","Singapore",1.35,103.82,"Asia/Singapore","SG","新加坡"],["吉隆坡","Kuala Lumpur",3.14,101.69,"Asia/Kuala_Lumpur","MY","馬來西亞"],["香港","Hong Kong",22.32,114.17,"Asia/Hong_Kong","HK","香港"],["澳門","Macau",22.2,113.54,"Asia/Macau","MO","澳門"],
+["上海","Shanghai",31.23,121.47,"Asia/Shanghai","CN","中國"],["北京","Beijing",39.9,116.41,"Asia/Shanghai","CN","中國"],
+["河內","Hanoi",21.03,105.85,"Asia/Ho_Chi_Minh","VN","越南"],["胡志明市","Ho Chi Minh City",10.82,106.63,"Asia/Ho_Chi_Minh","VN","越南"],["峴港","Da Nang",16.05,108.21,"Asia/Ho_Chi_Minh","VN","越南"],
+["馬尼拉","Manila",14.6,120.98,"Asia/Manila","PH","菲律賓"],["宿霧","Cebu",10.32,123.89,"Asia/Manila","PH","菲律賓"],["峇里島","Bali",-8.65,115.22,"Asia/Makassar","ID","印尼"],["雅加達","Jakarta",-6.21,106.85,"Asia/Jakarta","ID","印尼"],["台北","Taipei",25.03,121.57,"Asia/Taipei","TW","台灣"],
+["倫敦","London",51.51,-0.13,"Europe/London","GB","英國"],["巴黎","Paris",48.86,2.35,"Europe/Paris","FR","法國"],["羅馬","Rome",41.9,12.5,"Europe/Rome","IT","義大利"],["巴塞隆納","Barcelona",41.39,2.17,"Europe/Madrid","ES","西班牙"],["阿姆斯特丹","Amsterdam",52.37,4.9,"Europe/Amsterdam","NL","荷蘭"],["柏林","Berlin",52.52,13.41,"Europe/Berlin","DE","德國"],["維也納","Vienna",48.21,16.37,"Europe/Vienna","AT","奧地利"],["布拉格","Prague",50.08,14.44,"Europe/Prague","CZ","捷克"],["蘇黎世","Zurich",47.37,8.54,"Europe/Zurich","CH","瑞士"],["伊斯坦堡","Istanbul",41.01,28.98,"Europe/Istanbul","TR","土耳其"],["杜拜","Dubai",25.2,55.27,"Asia/Dubai","AE","阿聯"],
+["紐約","New York",40.71,-74.01,"America/New_York","US","美國"],["洛杉磯","Los Angeles",34.05,-118.24,"America/Los_Angeles","US","美國"],["舊金山","San Francisco",37.77,-122.42,"America/Los_Angeles","US","美國"],["西雅圖","Seattle",47.61,-122.33,"America/Los_Angeles","US","美國"],["夏威夷檀香山","Hawaii Honolulu",21.31,-157.86,"Pacific/Honolulu","US","美國"],
+["溫哥華","Vancouver",49.28,-123.12,"America/Vancouver","CA","加拿大"],["多倫多","Toronto",43.65,-79.38,"America/Toronto","CA","加拿大"],["雪梨","Sydney",-33.87,151.21,"Australia/Sydney","AU","澳洲"],["墨爾本","Melbourne",-37.81,144.96,"Australia/Melbourne","AU","澳洲"],["布里斯本","Brisbane",-27.47,153.03,"Australia/Brisbane","AU","澳洲"],["奧克蘭","Auckland",-36.85,174.76,"Pacific/Auckland","NZ","紐西蘭"],["關島","Guam",13.44,144.79,"Pacific/Guam","GU","關島"],["帛琉","Palau",7.34,134.48,"Pacific/Palau","PW","帛琉"]];
+const TZ1={JP:"Asia/Tokyo",KR:"Asia/Seoul",TH:"Asia/Bangkok",SG:"Asia/Singapore",MY:"Asia/Kuala_Lumpur",HK:"Asia/Hong_Kong",MO:"Asia/Macau",CN:"Asia/Shanghai",TW:"Asia/Taipei",VN:"Asia/Ho_Chi_Minh",PH:"Asia/Manila",KH:"Asia/Phnom_Penh",LA:"Asia/Vientiane",MM:"Asia/Yangon",IN:"Asia/Kolkata",AE:"Asia/Dubai",TR:"Europe/Istanbul",EG:"Africa/Cairo",GB:"Europe/London",IE:"Europe/Dublin",FR:"Europe/Paris",IT:"Europe/Rome",ES:"Europe/Madrid",PT:"Europe/Lisbon",NL:"Europe/Amsterdam",BE:"Europe/Brussels",DE:"Europe/Berlin",AT:"Europe/Vienna",CH:"Europe/Zurich",CZ:"Europe/Prague",HU:"Europe/Budapest",PL:"Europe/Warsaw",HR:"Europe/Zagreb",GR:"Europe/Athens",DK:"Europe/Copenhagen",SE:"Europe/Stockholm",NO:"Europe/Oslo",FI:"Europe/Helsinki",IS:"Atlantic/Reykjavik",NZ:"Pacific/Auckland",GU:"Pacific/Guam",PW:"Pacific/Palau"};
+const TZN={US:[["America/New_York",-75],["America/Chicago",-90],["America/Denver",-105],["America/Los_Angeles",-120],["America/Anchorage",-150],["Pacific/Honolulu",-157.8]],CA:[["America/Halifax",-63],["America/Toronto",-79],["America/Winnipeg",-97],["America/Edmonton",-113],["America/Vancouver",-123]],AU:[["Australia/Perth",116],["Australia/Adelaide",138],["Australia/Melbourne",145],["Australia/Sydney",151]],ID:[["Asia/Jakarta",107],["Asia/Makassar",119],["Asia/Jayapura",140]]};
+function tzFor(cc,lon){
+  cc=String(cc||"").toUpperCase();if(TZ1[cc])return TZ1[cc];
+  if(TZN[cc])return TZN[cc].slice().sort((a,b)=>Math.abs(a[1]-lon)-Math.abs(b[1]-lon))[0][0];
+  const h=Math.round(lon/15);return h===0?"UTC":`Etc/GMT${h>0?"-":"+"}${Math.abs(h)}`;
+}
+const TZ_OPTS=(()=>{const seen=new Map();CITIES.forEach(c=>{if(!seen.has(c[4]))seen.set(c[4],`${c[6]}・${c[0]}`)});Object.values(TZN).forEach(a=>a.forEach(([z])=>{if(!seen.has(z))seen.set(z,z.split("/")[1].replace(/_/g," "))}));Object.entries(TZ1).forEach(([k,z])=>{if(!seen.has(z))seen.set(z,z.split("/")[1].replace(/_/g," "))});return [...seen].map(([z,l])=>[z,`${l}（${z}）`])})();
+let geoRes=[],geoSeq=0;
+function geoPaint(note){
+  const b=$("#geoRes");if(!b)return;
+  b.innerHTML=geoRes.map((r,i)=>`<button type="button" class="geo" data-act="pickDest" data-i="${i}"><b>${esc(r.name)}</b><small>${esc([r.admin1,r.country].filter(Boolean).join("・"))}</small></button>`).join("")+(note?`<p class="hint">${esc(note)}</p>`:"");
+}
+function geoOnline(q){
+  return getJSON(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&language=zh&format=json`,6000).then(j=>(j&&j.results)||[])
+   .catch(()=>getJSON(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=jsonv2&addressdetails=1&limit=8&accept-language=zh-TW`,10000).then(a=>(a||[]).map(x=>{const ad=x.address||{},cc=String(ad.country_code||"").toUpperCase(),lon=+x.lon;
+     return {name:x.name||String(x.display_name||"").split(",")[0],admin1:ad.state||ad.province||ad.county||"",country:ad.country||"",latitude:+x.lat,longitude:lon,timezone:tzFor(cc,lon),country_code:cc}})));
+}
 function searchGeo(q){
-  const box=$("#geoRes");if(!box)return;
+  if(!$("#geoRes"))return;
   if(!q){toast("請輸入城市名稱");return}
-  if(!navigator.onLine){box.innerHTML='<p class="hint">需要網路才能搜尋</p>';return}
-  box.innerHTML='<p class="hint">搜尋中…</p>';
-  getJSON(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&language=zh&format=json`).then(j=>{
-    geoRes=(j&&j.results)||[];const b=$("#geoRes");if(!b)return;
-    b.innerHTML=geoRes.length?geoRes.map((r,i)=>`<button type="button" class="geo" data-act="pickDest" data-i="${i}"><b>${esc(r.name)}</b><small>${esc([r.admin1,r.country].filter(Boolean).join("・"))}</small></button>`).join(""):'<p class="hint">找不到這個地方，換個寫法或用英文試試（例如 Sapporo、Bangkok）</p>';
-  }).catch(()=>{const b=$("#geoRes");if(b)b.innerHTML='<p class="hint">搜尋失敗，請稍後再試</p>'});
+  const ql=q.toLowerCase(),seq=++geoSeq;
+  geoRes=CITIES.filter(c=>c[0].includes(q)||q.includes(c[0])||c[1].toLowerCase().includes(ql)).map(c=>({name:c[0],admin1:c[1],country:c[6],latitude:c[2],longitude:c[3],timezone:c[4],country_code:c[5]}));
+  if(!navigator.onLine){geoPaint(geoRes.length?"":"內建城市裡沒有這個地方；連上網路後可以搜尋更多地點");return}
+  geoPaint("搜尋更多地點中…");
+  geoOnline(q).then(list=>{if(seq!==geoSeq)return;
+    list.forEach(r=>{if(!geoRes.some(g=>Math.abs(g.latitude-r.latitude)<.3&&Math.abs(g.longitude-r.longitude)<.3))geoRes.push(r)});
+    geoPaint(geoRes.length?"":"找不到這個地方，換個寫法或用英文試試（例如 Sapporo、Bangkok）");
+  }).catch(()=>{if(seq===geoSeq)geoPaint(geoRes.length?"":"線上搜尋目前連不上，先試試常見的城市名稱（例如 東京、首爾、曼谷）")});
 }
 
 /* ---------- backup page ---------- */
@@ -1047,12 +1116,14 @@ const ACT={
   editNote(el){const n=state.notes.find(x=>x.id===el.dataset.id);openSheet({title:"修改注意事項",fields:NOTE_FIELDS,values:n,onSave(v){Object.assign(n,v);commit()},onDelete(){state.notes.splice(state.notes.indexOf(n),1);commit()},deleteLabel:"刪除"})},
   moveNote(el){const arr=state.notes,i=arr.findIndex(x=>x.id===el.dataset.id),j=i+ +el.dataset.dir;if(j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];commit()},
   export(){doExport()},
-  setDest(){geoRes=[];openSheet({title:"設定目的地",fields:[{k:"q",label:"城市名稱",ph:"例如：札幌、首爾、Bangkok",hint:"中文或英文都可以；找不到時試試英文"}],
+  setDest(){geoRes=[];openSheet({title:"設定目的地",fields:[{k:"q",label:"城市名稱",ph:"例如：札幌、首爾、Bangkok",hint:"常去的城市已內建，輸入中文就找得到；其他地方中文或英文都可以"}],
     extra:`<div id="geoRes" class="georesults"></div>`,saveLabel:"搜尋",onSave(v){searchGeo(v.q);return false}})},
   pickDest(el){const r=geoRes[+el.dataset.i];if(!r)return;const t=state.trip;
     t.dest={name:r.name,label:[r.name,r.admin1,r.country].filter(Boolean).join("・"),lat:r.latitude,lon:r.longitude,tz:r.timezone||"UTC",cc:r.country_code||""};
     if(CUR[t.dest.cc])t.cur=CUR[t.dest.cc];closeSheet();commit();toast("目的地："+r.name);refreshLive(true)},
   reloadLive(){refreshLive(true)},
+  setTz(){const D=state.trip.dest;if(!D)return;const opts=TZ_OPTS.some(o=>o[0]===D.tz)?TZ_OPTS:[[D.tz,D.tz]].concat(TZ_OPTS);
+    openSheet({title:"更改時區",values:{tz:D.tz},fields:[{k:"tz",label:"目的地的時區",type:"select",options:opts,hint:"選和目的地同一個國家、地區的城市"}],onSave(v){D.tz=v.tz;commit();refreshLive(true)}})},
   setCur(){const t=state.trip;openSheet({title:"幣別",values:{cur:t.cur||"",home:t.home||"TWD"},fields:[
     {k:"cur",label:"當地貨幣（3 個英文字母）",ph:"例如：JPY",hint:"日圓 JPY・韓元 KRW・泰銖 THB・越南盾 VND・歐元 EUR・美元 USD"},
     {k:"home",label:"你的貨幣",ph:"TWD",hint:"新台幣 TWD"}],
