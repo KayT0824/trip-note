@@ -401,9 +401,9 @@ body.editing .fab{background:var(--pine)}
 
 <script>
 "use strict";
-const APP_VERSION="2.0.0";
+const APP_VERSION="2.1.0";
 /* 每次更新：改 APP_VERSION、改下面的更新內容，並把 sw.js 的 CACHE 版本號一起改掉 */
-const CHANGES=["通用版：不限目的地，任何旅行都能用","新增「天氣匯率」頁：當地天氣預報、時差、匯率換算","設定頁可以換 App 名稱、配色、封面圖片、每天的小圖示","伴手禮和代買可以一鍵搜尋商品"];
+const CHANGES=["改旅程日期時，每一天的日期會自動跟著更新，天數不夠會自動補上","匯率改用臺灣銀行牌告匯率，並標示資料來源","天氣載入失敗時會清楚顯示原因，可以重試","通用版：不限目的地，任何旅行都能用","新增「天氣匯率」頁：當地天氣預報、時差、匯率換算","設定頁可以換 App 名稱、配色、封面圖片、每天的小圖示","伴手禮和代買可以一鍵搜尋商品"];
 const KEY="tripnote:data";
 const WK=["日","一","二","三","四","五","六"];
 const hadData=(()=>{try{return !!localStorage.getItem(KEY)}catch(e){return false}})();
@@ -637,20 +637,28 @@ function getJSON(url){
   return fetch(url,{signal:c.signal,cache:"no-store"}).then(r=>{clearTimeout(t);if(!r.ok)throw new Error(r.status);return r.json()});
 }
 const shortTime=ms=>new Date(ms).toLocaleString("zh-TW",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
-let liveBusy=false,liveMsg="";
+async function loadFx(t,fk){
+  /* 先讀同一個網站上的 rates.json（GitHub 每天自動從臺灣銀行牌告匯率抓下來）；讀不到才用國際參考匯率 */
+  if(t.home==="TWD"&&location.protocol.startsWith("http")){
+    try{const j=await getJSON("rates.json?t="+Date.now()),r=j&&j.rates&&j.rates[t.cur],v=r&&(r.cashSell||r.spotSell);
+      if(v&&Date.now()-new Date(j.updated).getTime()<8*864e5){live.fx={key:fk,at:Date.now(),rate:v,src:"bot",cash:r.cashSell||0,spot:r.spotSell||0,time:new Date(j.updated).getTime()};return}}catch(e){}
+  }
+  const j=await getJSON(`https://open.er-api.com/v6/latest/${encodeURIComponent(t.cur)}`),r=j&&j.rates&&j.rates[t.home];
+  if(!r)throw new Error("fx");live.fx={key:fk,at:Date.now(),rate:r,src:"era"};
+}
+let liveBusy=false,liveMsg="",wxErr=false;
 async function refreshLive(force){
   const t=state.trip,D=t.dest;if(!D||liveBusy)return;
   if(!navigator.onLine){if(force)toast("目前沒有網路，先顯示上次的資料");return}
   const now=Date.now(),k=destKey(),fk=fxKey();
   const needW=force||!live.w||live.w.key!==k||now-live.w.at>3*36e5;
-  const needF=!!(t.cur&&t.home&&t.cur!==t.home)&&(force||!live.fx||live.fx.key!==fk||now-live.fx.at>6*36e5);
+  const needF=!!(t.cur&&t.home&&t.cur!==t.home)&&(force||!live.fx||live.fx.key!==fk||now-live.fx.at>2*36e5);
   if(!needW&&!needF)return;
   liveBusy=true;liveMsg="更新中…";paintLive();
   const jobs=[];
   if(needW)jobs.push(getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${D.lat}&longitude=${D.lon}&current=temperature_2m,apparent_temperature,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=16`)
-    .then(j=>{if(!j||!j.daily)throw new Error("wx");live.w={key:k,at:Date.now(),cur:j.current||null,daily:j.daily}}));
-  if(needF)jobs.push(getJSON(`https://open.er-api.com/v6/latest/${encodeURIComponent(t.cur)}`)
-    .then(j=>{const r=j&&j.rates&&j.rates[t.home];if(!r)throw new Error("fx");live.fx={key:fk,at:Date.now(),rate:r}}));
+    .then(j=>{if(!j||!j.daily)throw new Error("wx");live.w={key:k,at:Date.now(),cur:j.current||null,daily:j.daily};wxErr=false}).catch(e=>{wxErr=true;throw e}));
+  if(needF)jobs.push(loadFx(t,fk));
   const res=await Promise.allSettled(jobs);liveBusy=false;saveLive();
   liveMsg=res.some(r=>r.status==="rejected")?"有些資料沒有更新成功，等一下再按「立即更新」試試":"";
   if(force&&!liveMsg)toast("已更新");
@@ -800,23 +808,29 @@ function renderInfo(){
 /* ---------- live page (weather / time / money) ---------- */
 function wxHtml(){
   const w=live.w,t=state.trip;
-  if(!w||w.key!==destKey()||!w.daily)return `<p class="hint">${navigator.onLine?"載入中…":"需要網路才能取得天氣，連上網路後會自動更新。"}</p>`;
+  const more=`<div class="btnrow"><a class="btn w" href="${searchUrl((t.dest?t.dest.name:"")+" 天氣")}" target="_blank" rel="noopener">🔍 用 Google 查當地天氣</a></div>`;
+  if(!w||w.key!==destKey()||!w.daily){
+    if(!navigator.onLine)return `<p class="hint">需要網路才能取得天氣，連上網路後會自動更新。</p>`;
+    if(wxErr&&!liveBusy)return `<p class="hint">天氣資料沒有載入成功。可能是網路不穩，或這個網路環境擋住了天氣服務（Open-Meteo）。</p><div class="btnrow"><button type="button" class="btn" data-act="reloadLive">↻ 再試一次</button></div>${more}`;
+    return `<p class="hint">載入中…（最多等 12 秒）</p>`}
   const end=t.end||t.start,inTrip=iso=>!!t.start&&iso>=t.start&&iso<=end;
   const c=w.cur,pp=w.daily.precipitation_probability_max;let h="";
   if(c)h+=`<div class="wxnow"><span class="big">${wxE(c.weather_code)}</span><span><b>${Math.round(c.temperature_2m)}°C</b> ${esc(wxT(c.weather_code))}<small>當地現在・體感 ${Math.round(c.apparent_temperature)}°C</small></span></div>`;
   h+=`<div class="wxlist">${w.daily.time.map((iso,i)=>`<div class="wxrow${inTrip(iso)?" trip":""}"><span class="d">${fmtDate(iso)}</span><span>${wxE(w.daily.weather_code[i])}</span><span class="tx">${esc(wxT(w.daily.weather_code[i]))}</span><span class="tp">${Math.round(w.daily.temperature_2m_max[i])}° / ${Math.round(w.daily.temperature_2m_min[i])}°</span><span class="pp">${pp&&pp[i]!=null?"💧"+pp[i]+"%":""}</span></div>`).join("")}</div>`;
   if(t.start&&!w.daily.time.some(inTrip))h+=`<p class="hint">行程日期還不在預報範圍內（大約只能看未來兩週），出發前兩週左右就會出現在這裡和每天的行程頁。</p>`;
   else if(t.start)h+=`<p class="hint">黃色底的是行程日期，每天的行程頁上方也會顯示天氣。</p>`;
-  h+=`<p class="hint">更新時間 ${shortTime(w.at)}・資料來源 Open-Meteo</p>`;
+  h+=`<p class="hint">更新時間 ${shortTime(w.at)}・資料來源 Open-Meteo（open-meteo.com）</p>${more}`;
   return h;
 }
-function fmtRate(r){return r>=100?r.toFixed(1):r>=1?r.toFixed(3):r.toPrecision(3)}
+function fmtRate(r){return r>=100?r.toFixed(1):r>=10?r.toFixed(2):r>=1?r.toFixed(3):String(+r.toPrecision(4))}
 function fxLine(){
   const t=state.trip,f=live.fx;
   if(!t.cur)return `還沒設定當地貨幣，按下面的「更改幣別」設定。`;
   if(t.cur===t.home)return `當地貨幣和你的貨幣一樣，不用換算。`;
   if(!f||f.key!==fxKey())return navigator.onLine?"載入中…":"需要網路才能取得匯率，連上網路後會自動更新。";
-  return `<b>1 ${esc(t.cur)} ≈ ${fmtRate(f.rate)} ${esc(t.home)}</b><small>更新時間 ${shortTime(f.at)}・資料來源 ExchangeRate-API・實際以銀行、刷卡匯率為準</small>`;
+  const bot=`<a href="https://rate.bot.com.tw/xrt?Lang=zh-TW" target="_blank" rel="noopener">臺灣銀行牌告匯率（rate.bot.com.tw）</a>`;
+  if(f.src==="bot")return `<b>1 ${esc(t.cur)} ≈ ${fmtRate(f.rate)} ${esc(t.home)}</b><small>${f.cash?"現金賣出價（在臺銀用台幣換外幣現鈔的價格）":"即期賣出價（這個幣別臺銀沒有現鈔牌價）"}${f.cash&&f.spot?"・即期賣出 "+fmtRate(f.spot):""}</small><small>資料來源：${bot}・抓取時間 ${shortTime(f.time)}・實際以銀行臨櫃、刷卡當下匯率為準</small>`;
+  return `<b>1 ${esc(t.cur)} ≈ ${fmtRate(f.rate)} ${esc(t.home)}</b><small>⚠ 目前讀不到臺灣銀行牌告匯率，暫時顯示國際參考匯率（資料來源：ExchangeRate-API，更新時間 ${shortTime(f.at)}），和臺銀牌價會有落差。</small><small>正確牌價請看 ${bot}</small>`;
 }
 function renderLive(){
   const t=state.trip,D=t.dest;
@@ -969,6 +983,14 @@ const STOP_FIELDS=[
   {k:"note",label:"備註",type:"textarea",ph:"每行開頭打「-」會變成清單",hint:"每行開頭打「-」會變成項目符號；貼上網址會變成連結"},
   {k:"place",label:"地點（給 Google 地圖搜尋）",ph:"例如：Otaru Canal",hint:"填英文或日文名稱比較準確"}];
 const findDay=id=>state.days.find(d=>d.id===id);
+function addDays(iso,n){const d=new Date(iso+"T00:00:00");d.setDate(d.getDate()+n);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function syncDays(){
+  const t=state.trip;if(!t.start)return "";let msg="每一天的日期已跟著更新";
+  if(t.end){const n=Math.min(31,Math.round((new Date(t.end+"T00:00:00")-new Date(t.start+"T00:00:00"))/864e5)+1);
+    while(state.days.length<n)state.days.push({id:uid(),date:"",label:`第 ${state.days.length+1} 天`,title:"",intro:"",stops:[]});
+    if(state.days.length>n)msg=`日期已更新。行程有 ${state.days.length} 天，比旅程日期多，多的可以在「修改這一天」刪除`}
+  state.days.forEach((d,i)=>{d.date=addDays(t.start,i)});return msg;
+}
 const commit=()=>{state.sample&&(state.sample=false);save();rerender()};
 
 /* ---------- actions ---------- */
@@ -979,7 +1001,8 @@ const ACT={
     {k:"title",label:"旅程名稱",ph:"例如：北海道家族旅行"},{k:"subtitle",label:"副標題",ph:"例如：札幌・小樽 五日"},
     {k:"start",label:"出發日期",type:"date"},{k:"end",label:"回程日期",type:"date"},{k:"people",label:"同行的人",ph:"例如：爸爸、媽媽、我"}],
     extra:t.dest?"":`<p class="hint">想看當地天氣、時差、匯率？儲存後到「天氣匯率」頁設定目的地。</p>`,
-    onSave(v){Object.assign(state.trip,v);commit()}})},
+    onSave(v){if(v.start&&v.end&&v.end<v.start){toast("回程日期不能比出發日期早");return false}
+      const ch=v.start!==t.start||v.end!==t.end;Object.assign(state.trip,v);const msg=ch?syncDays():"";commit();if(msg)toast(msg)}})},
   keepSample(){state.sample=false;save();rerender();toast("好的，直接修改範例吧")},
   askClear(){openSheet({title:"清空所有資料？",fields:[],extra:`<p style="color:var(--muted);margin:0">所有行程、清單、資訊都會刪除，沒辦法復原。建議先到「備份」頁匯出備份。</p>`,
     onDelete(){state=blank(state.look);save();editing=true;document.body.classList.add("editing");$("#fabtxt").textContent="✓ 完成";renderHead();render(state.days[0].id);toast("已清空，先填旅程名稱和日期");setTimeout(()=>ACT.editTrip(),300)},deleteLabel:"清空",confirm:true})},
