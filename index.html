@@ -267,6 +267,14 @@ body.editing .fab{background:var(--pine)}
 .wxcity:first-child{margin-top:4px;padding-top:0;border-top:0}
 .wxcity .ico{width:18px;height:18px;vertical-align:-3px}
 .wxcity small{font-family:var(--f-body);font-size:12px;color:var(--muted);margin-left:6px}
+.trips{display:grid;gap:8px;margin-top:10px}
+.tripitem{display:flex;align-items:center;gap:8px;border:var(--bw) solid var(--line);border-radius:var(--r-md);background:var(--surface);padding:8px 10px}
+.tripitem.on{background:var(--lamp)}
+.tripitem .nm{flex:1;min-width:0}
+.tripitem b{display:block;font-family:var(--f-display);font-weight:400;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tripitem small{color:var(--muted);font-size:12px}
+.tripitem .tag{font-size:12px;border:2px solid var(--line);border-radius:999px;padding:1px 8px;background:var(--surface);white-space:nowrap}
+.tripswitch{margin-top:8px}
 .dayhead .chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .wx{font-size:12px;background:var(--surface);border:2px solid var(--line);border-radius:999px;padding:1px 10px;white-space:nowrap}
 .hint,.panel p.hint{font-size:12px;color:var(--muted);margin:8px 0 0}
@@ -406,9 +414,9 @@ body.editing .fab{background:var(--pine)}
 
 <script>
 "use strict";
-const APP_VERSION="2.4.0";
+const APP_VERSION="2.5.0";
 /* 每次更新：改 APP_VERSION、改下面的更新內容，並把 sw.js 的 CACHE 版本號一起改掉 */
-const CHANGES=["每一天可以設定所在的城市，天氣會依當天的城市顯示","行程可以填「結束／抵達時間」，交通班次更清楚（都可以不填）","內建城市新增寮國：永珍、龍坡邦、旺陽、巴色、占巴塞","修正：每一天的日期和旅程日期對不上時，會自動對齊","天氣加入備用來源（挪威氣象局），原本的來源連不上時會自動切換","設定目的地：內建常去的城市，不用等搜尋；也可以手動更改時區","改旅程日期時，每一天的日期會自動跟著更新，天數不夠會自動補上","匯率改用臺灣銀行牌告匯率，並標示資料來源","天氣載入失敗時會清楚顯示原因，可以重試","通用版：不限目的地，任何旅行都能用","新增「天氣匯率」頁：當地天氣預報、時差、匯率換算","設定頁可以換 App 名稱、配色、封面圖片、每天的小圖示","伴手禮和代買可以一鍵搜尋商品"];
+const CHANGES=["可以同時存好幾趟旅行，在「設定」頁新增、切換","匯入備份時可以選「新增成另一趟旅行」，不會蓋掉目前的行程","還沒填日期時，標題上方顯示「日期未定」","每一天可以設定所在的城市，天氣會依當天的城市顯示","行程可以填「結束／抵達時間」，交通班次更清楚（都可以不填）","內建城市新增寮國：永珍、龍坡邦、旺陽、巴色、占巴塞","修正：每一天的日期和旅程日期對不上時，會自動對齊","天氣加入備用來源（挪威氣象局），原本的來源連不上時會自動切換","設定目的地：內建常去的城市，不用等搜尋；也可以手動更改時區","改旅程日期時，每一天的日期會自動跟著更新，天數不夠會自動補上","匯率改用臺灣銀行牌告匯率，並標示資料來源","天氣載入失敗時會清楚顯示原因，可以重試","通用版：不限目的地，任何旅行都能用","新增「天氣匯率」頁：當地天氣預報、時差、匯率換算","設定頁可以換 App 名稱、配色、封面圖片、每天的小圖示","伴手禮和代買可以一鍵搜尋商品"];
 const KEY="tripnote:data";
 const WK=["日","一","二","三","四","五","六"];
 const hadData=(()=>{try{return !!localStorage.getItem(KEY)}catch(e){return false}})();
@@ -553,10 +561,17 @@ function load(){
 }
 function valid(d){return d&&typeof d==="object"&&d.trip&&Array.isArray(d.days)&&Array.isArray(d.lists)&&Array.isArray(d.info)}
 function save(){
-  try{localStorage.setItem(KEY,JSON.stringify(state));saveOK=true}
+  try{localStorage.setItem(KEY,JSON.stringify(state));saveOK=true;if(trips)syncMeta()}
   catch(e){saveOK=false;toast("沒辦法儲存，請到「備份」頁匯出備份")}
 }
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+/* 多趟旅行：目前這趟存在 KEY，其他趟各自存在 tripnote:trip:<id> */
+const TKEY="tripnote:trips",SLOT=id=>"tripnote:trip:"+id;
+let trips=null;try{trips=JSON.parse(localStorage.getItem(TKEY))}catch(e){}
+if(!trips||!Array.isArray(trips.list)||!trips.active)trips={active:uid(),list:[]};
+function saveTrips(){try{localStorage.setItem(TKEY,JSON.stringify(trips))}catch(e){}}
+function metaOf(st){return {title:st.trip.title||"我的旅行",start:st.trip.start||"",end:st.trip.end||""}}
+function syncMeta(){let m=trips.list.find(x=>x.id===trips.active);if(!m){m={id:trips.active};trips.list.unshift(m)}Object.assign(m,metaOf(state));saveTrips()}
 state=migrate(load());save();
 function migrate(d){
   const old=d.v||1;
@@ -733,13 +748,14 @@ function tabsAll(){return state.days.map((d,i)=>({id:d.id,tab:d.label||`第 ${i+
 function renderHead(){
   const t=state.trip;
   const range=t.start?`${fmtDate(t.start)}${t.end?" – "+fmtDate(t.end):""}`:"";
-  let h=`<div class="eyebrow">${esc(range||"旅行手帖")}${t.people?" ・ "+esc(t.people):""}</div>
+  let h=`<div class="eyebrow">${esc(range||"日期未定")}${t.people?" ・ "+esc(t.people):""}</div>
   <h1><span class="mark">${esc(t.title||"我的旅行")}</span></h1>
   ${t.subtitle?`<p class="sub">${esc(t.subtitle)}</p>`:""}
   ${t.dest?`<div class="destline">${ico("i-pin")}<span>${esc(t.dest.name)}</span><span id="localTime"></span></div>`:""}
   <div class="count" id="count"></div>`;
   const maps=[];state.info.forEach(g=>g.rows.forEach(r=>{if(r.kind==="map"&&r.value)maps.push(r)}));
   if(maps.length)h+=`<div class="maps">${maps.slice(0,4).map((r,i)=>`<a class="mapbtn m${i%4}" href="${mapUrl(r.value)}" target="_blank" rel="noopener">${ico("i-pin")}<span><b>${esc(r.label)}</b><small>${esc(r.value)}</small></span></a>`).join("")}</div>`;
+  if(trips.list.length>1)h+=`<div class="tripswitch"><button type="button" class="tbtn" data-act="tripMenu">⇄ 切換旅行（共 ${trips.list.length} 趟）</button></div>`;
   if(editing)h+=`<div class="btnrow"><button type="button" class="btn y" data-act="editTrip">✎ 修改旅程名稱與日期</button></div>`;
   if(state.sample)h+=`<div class="sample"><span><b>這是北海道範例行程。</b>可以直接改成自己的，或清空重來。</span><button type="button" class="btn w" data-act="keepSample">保留範例，直接修改</button><button type="button" class="btn r" data-act="askClear">清空，從頭開始</button></div>`;
   $("#head").innerHTML=h;tick();
@@ -979,6 +995,9 @@ function renderBackup(){
   const seg=(act,val,opts)=>`<div class="seg" role="group">${opts.map(([k,l,pre])=>`<button type="button" data-act="${act}" data-k="${k}" aria-pressed="${val===k}">${pre||""}${esc(l)}</button>`).join("")}</div>`;
   return `<div class="dayhead"><div class="hl">${ico("i-box","mascot")}<h2>設定與備份</h2></div></div>
   <p class="dayintro">資料只存在這台裝置的瀏覽器裡，不會上傳到任何地方。</p>
+  <section class="panel"><h3>我的旅行</h3><p>同一支手機可以存好幾趟旅行，互不影響。現在打開的是黃色那一趟。</p>${tripRows()}
+   <div class="btnrow"><button type="button" class="btn y" data-act="newTrip">＋ 新增一趟旅行</button></div>
+   <p class="hint">「匯出備份」和「清空」都只會處理目前這一趟。</p></section>
   <section class="panel"><h3>外觀</h3><p>換成自己喜歡的樣子。外觀設定也會跟著備份檔一起匯出。</p>
    <div class="field"><span>App 名稱</span><form class="quick" data-act="setName" style="margin-top:0"><input id="appNameIn" value="${esc(L.appName)}" maxlength="20" aria-label="App 名稱"><button type="submit">儲存</button></form></div>
    <div class="field"><span>配色</span>${seg("setPal",L.palette,Object.entries(PALETTES).map(([k,p])=>[k,p.name,`<i class="sw" style="background:${p.ice}"></i><i class="sw" style="background:${p.berry}"></i>`]))}</div>
@@ -1029,6 +1048,23 @@ function render(id,opts={}){
   try{localStorage.setItem("tripnote:tab",id)}catch(e){}
 }
 function rerender(){renderHead();render(cur,{quiet:true})}
+/* 把目前這趟收起來，換成另一份資料當目前這趟 */
+function stashCurrent(){
+  try{localStorage.setItem(SLOT(trips.active),JSON.stringify(state));return true}
+  catch(e){toast("手機空間不夠，沒辦法再多存一趟。可以先匯出備份、刪掉不用的旅行");return false}
+}
+function showTrip(msg){
+  editing=false;document.body.classList.remove("editing");$("#fabtxt").textContent="✎ 編輯";
+  applyLook();renderHead();render(state.days[0]?state.days[0].id:"lists");if(msg)toast(msg);refreshLive(false);
+}
+function useAsNewTrip(d,msg){
+  if(!stashCurrent())return false;
+  trips.active=uid();state=migrate(d);save();showTrip(msg);return true;
+}
+function tripRows(){
+  const rng=m=>m.start?`${fmtDate(m.start)}${m.end?" – "+fmtDate(m.end):""}`:"日期未定";
+  return `<div class="trips">${trips.list.map(m=>`<div class="tripitem${m.id===trips.active?" on":""}"><div class="nm"><b>${esc(m.title)}</b><small>${esc(rng(m))}</small></div>${m.id===trips.active?`<span class="tag">使用中</span>`:`<button type="button" class="tbtn" data-act="switchTrip" data-id="${m.id}">切換</button><button type="button" class="tbtn" data-act="delTrip" data-id="${m.id}">刪除</button>`}</div>`).join("")}</div>`;
+}
 function go(id){render(id);const nav=document.querySelector("nav"),top=$("#main").getBoundingClientRect().top+scrollY-nav.offsetHeight;if(scrollY>top)scrollTo({top,behavior:"smooth"})}
 
 /* walker */
@@ -1102,7 +1138,7 @@ const ACT={
     onSave(v){if(v.start&&v.end&&v.end<v.start){toast("回程日期不能比出發日期早");return false}
       Object.assign(state.trip,v);const before=state.days.map(d=>d.date).join(),m=syncDays(),msg=before!==state.days.map(d=>d.date).join()?m:"";commit();if(msg)toast(msg)}})},
   keepSample(){state.sample=false;save();rerender();toast("好的，直接修改範例吧")},
-  askClear(){openSheet({title:"清空所有資料？",fields:[],extra:`<p style="color:var(--muted);margin:0">所有行程、清單、資訊都會刪除，沒辦法復原。建議先到「備份」頁匯出備份。</p>`,
+  askClear(){openSheet({title:"清空這趟旅行？",fields:[],extra:`<p style="color:var(--muted);margin:0">「${esc(state.trip.title||"旅行")}」的行程、清單、資訊都會刪除，沒辦法復原；其他趟旅行不受影響。建議先匯出備份。</p>`,
     onDelete(){state=blank(state.look);save();editing=true;document.body.classList.add("editing");$("#fabtxt").textContent="✓ 完成";renderHead();render(state.days[0].id);toast("已清空，先填旅程名稱和日期");setTimeout(()=>ACT.editTrip(),300)},deleteLabel:"清空",confirm:true})},
   askSample(){openSheet({title:"載入北海道範例？",fields:[],extra:`<p style="color:var(--muted);margin:0">會取代目前的行程。建議先匯出備份。</p>`,onDelete(){const lk=state.look;state=migrate(sample());state.look=lk;save();applyLook();renderHead();render(state.days[0].id);toast("已載入範例")},deleteLabel:"載入範例",confirm:true})},
   addDay(){const last=state.days[state.days.length-1];let date="";if(last&&last.date){const d=new Date(last.date+"T00:00:00");d.setDate(d.getDate()+1);date=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
@@ -1145,6 +1181,19 @@ const ACT={
   editNote(el){const n=state.notes.find(x=>x.id===el.dataset.id);openSheet({title:"修改注意事項",fields:NOTE_FIELDS,values:n,onSave(v){Object.assign(n,v);commit()},onDelete(){state.notes.splice(state.notes.indexOf(n),1);commit()},deleteLabel:"刪除"})},
   moveNote(el){const arr=state.notes,i=arr.findIndex(x=>x.id===el.dataset.id),j=i+ +el.dataset.dir;if(j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];commit()},
   export(){doExport()},
+  tripMenu(){openSheet({title:"切換旅行",fields:[],extra:tripRows()+`<div class="btnrow"><button type="button" class="btn y" data-act="newTrip">＋ 新增一趟旅行</button></div>`})},
+  switchTrip(el){const id=el.dataset.id;if(id===trips.active)return;
+    let d=null;try{d=JSON.parse(localStorage.getItem(SLOT(id)))}catch(e){}
+    if(!valid(d)){toast("讀不到這趟旅行的資料");return}
+    if(!stashCurrent())return;
+    trips.active=id;state=migrate(d);save();try{localStorage.removeItem(SLOT(id))}catch(e){}
+    closeSheet();showTrip("已切換到「"+(state.trip.title||"旅行")+"」")},
+  delTrip(el){const id=el.dataset.id,m=trips.list.find(x=>x.id===id);if(!m||id===trips.active)return;
+    openSheet({title:"刪除「"+m.title+"」？",fields:[],extra:`<p style="color:var(--muted);margin:0">這趟旅行的所有資料都會刪除，沒辦法復原。需要的話請先切換過去，匯出備份。</p>`,
+      onDelete(){try{localStorage.removeItem(SLOT(id))}catch(e){}trips.list=trips.list.filter(x=>x.id!==id);saveTrips();rerender();toast("已刪除")},deleteLabel:"刪除"})},
+  newTrip(){closeSheet();if(!useAsNewTrip(blank({hero:"travel",icons:"travel"}),""))return;
+    editing=true;document.body.classList.add("editing");$("#fabtxt").textContent="✓ 完成";renderHead();render(state.days[0].id);
+    toast("已新增，先填旅程名稱和日期");setTimeout(()=>ACT.editTrip(),300)},
   setDest(el){geoRes=[];destTarget=(el&&el.dataset&&el.dataset.day)||null;const dd=destTarget&&findDay(destTarget);
     openSheet({title:dd?"這一天所在的城市":"設定主要目的地",fields:[{k:"q",label:"城市名稱",ph:"例如：札幌、首爾、Bangkok",hint:"常去的城市已內建，輸入中文就找得到；其他地方中文或英文都可以"}],
     extra:`<div id="geoRes" class="georesults"></div>${dd?`<p class="hint">設定後，之後的每一天都會沿用這個城市，直到你在另一天設定新的城市。${dd.dest?`目前：${esc(dd.dest.name)}`:""}</p>${dd.dest?`<div class="btnrow"><button type="button" class="btn w" data-act="clearDayDest">清除（沿用前一天的城市）</button></div>`:""}`:`<p class="hint">主要目的地用來顯示時差和匯率。</p>`}`,saveLabel:"搜尋",onSave(v){searchGeo(v.q);return false}})},
@@ -1221,8 +1270,9 @@ async function doExport(){
 $("#importFile").addEventListener("change",e=>{
   const f=e.target.files&&e.target.files[0];if(!f)return;const r=new FileReader();
   r.onload=()=>{try{const j=JSON.parse(r.result),d=j&&j.data?j.data:j;if(!valid(d))throw 0;
-      openSheet({title:"匯入這份備份？",fields:[],extra:`<p style="margin:0">「${esc(d.trip.title||"旅程")}」，共 ${d.days.length} 天。<br><span style="color:var(--muted)">會取代這台裝置上目前的行程。</span></p>`,
-       onDelete(){if(!d.look)d.look=state.look;state=migrate(d);save();applyLook();renderHead();render(state.days[0]?state.days[0].id:"lists");toast("匯入完成")},deleteLabel:"確定匯入",confirm:true})}
+      openSheet({title:"匯入這份備份？",fields:[],extra:`<p style="margin:0">「${esc(d.trip.title||"旅程")}」，共 ${d.days.length} 天。</p><p class="hint">「新增成另一趟」：目前的「${esc(state.trip.title||"旅行")}」會保留，之後可以在「設定」頁切換。<br>「取代目前這趟」：目前這趟的資料會被蓋掉。</p>`,
+       saveLabel:"新增成另一趟",onSave(){if(!d.look)d.look=DEF_LOOK();useAsNewTrip(d,"已新增「"+(d.trip.title||"旅行")+"」")},
+       onDelete(){if(!d.look)d.look=state.look;state=migrate(d);save();showTrip("匯入完成")},deleteLabel:"取代目前這趟"})}
     catch(err){toast("這個檔案不是這個 App 的備份檔")}};
   r.readAsText(f);
 });
@@ -1245,6 +1295,7 @@ $("#heroFile").addEventListener("change",e=>{
 addEventListener("online",()=>refreshLive(false));
 
 /* ---------- start ---------- */
+syncMeta();
 applyLook();
 renderHead();
 (function(){let start=null;try{start=localStorage.getItem("tripnote:tab")}catch(e){}

@@ -1,7 +1,7 @@
 /* 旅行手帖 service worker
    每次更新 index.html，請把下面的版本號改成跟 index.html 裡的 APP_VERSION 一樣，
    使用者打開 App 時才會出現「有新版本，點這裡更新」。 */
-const CACHE = "tripnote-2.4.0";
+const CACHE = "tripnote-2.5.0";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
