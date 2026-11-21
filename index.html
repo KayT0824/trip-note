@@ -275,6 +275,10 @@ body.editing .fab{background:var(--pine)}
 .tripitem small{color:var(--muted);font-size:12px}
 .tripitem .tag{font-size:12px;border:2px solid var(--line);border-radius:999px;padding:1px 8px;background:var(--surface);white-space:nowrap}
 .tripswitch{margin-top:8px}
+.spotsec{font-family:var(--f-display);font-weight:400;font-size:19px;margin:22px 0 0}
+.spotsec small{font-family:var(--f-body);font-size:12px;color:var(--muted);margin-left:6px}
+.ncard .links{margin-top:8px}
+a.lk{display:inline-block;border:2px solid var(--line);border-radius:999px;padding:0 10px;margin:2px 0;text-decoration:none;color:var(--ink);background:var(--bg);font-size:13px;white-space:nowrap}
 .dayhead .chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .wx{font-size:12px;background:var(--surface);border:2px solid var(--line);border-radius:999px;padding:1px 10px;white-space:nowrap}
 .hint,.panel p.hint{font-size:12px;color:var(--muted);margin:8px 0 0}
@@ -414,9 +418,9 @@ body.editing .fab{background:var(--pine)}
 
 <script>
 "use strict";
-const APP_VERSION="2.5.0";
+const APP_VERSION="2.6.0";
 /* 每次更新：改 APP_VERSION、改下面的更新內容，並把 sw.js 的 CACHE 版本號一起改掉 */
-const CHANGES=["可以同時存好幾趟旅行，在「設定」頁新增、切換","匯入備份時可以選「新增成另一趟旅行」，不會蓋掉目前的行程","還沒填日期時，標題上方顯示「日期未定」","每一天可以設定所在的城市，天氣會依當天的城市顯示","行程可以填「結束／抵達時間」，交通班次更清楚（都可以不填）","內建城市新增寮國：永珍、龍坡邦、旺陽、巴色、占巴塞","修正：每一天的日期和旅程日期對不上時，會自動對齊","天氣加入備用來源（挪威氣象局），原本的來源連不上時會自動切換","設定目的地：內建常去的城市，不用等搜尋；也可以手動更改時區","改旅程日期時，每一天的日期會自動跟著更新，天數不夠會自動補上","匯率改用臺灣銀行牌告匯率，並標示資料來源","天氣載入失敗時會清楚顯示原因，可以重試","通用版：不限目的地，任何旅行都能用","新增「天氣匯率」頁：當地天氣預報、時差、匯率換算","設定頁可以換 App 名稱、配色、封面圖片、每天的小圖示","伴手禮和代買可以一鍵搜尋商品"];
+const CHANGES=["新增「口袋名單」頁：收集想去的餐廳、咖啡廳、商店，依分類排好，一鍵開地圖","可以同時存好幾趟旅行，在「設定」頁新增、切換","匯入備份時可以選「新增成另一趟旅行」，不會蓋掉目前的行程","還沒填日期時，標題上方顯示「日期未定」","每一天可以設定所在的城市，天氣會依當天的城市顯示","行程可以填「結束／抵達時間」，交通班次更清楚（都可以不填）","內建城市新增寮國：永珍、龍坡邦、旺陽、巴色、占巴塞","修正：每一天的日期和旅程日期對不上時，會自動對齊","天氣加入備用來源（挪威氣象局），原本的來源連不上時會自動切換","設定目的地：內建常去的城市，不用等搜尋；也可以手動更改時區","改旅程日期時，每一天的日期會自動跟著更新，天數不夠會自動補上","匯率改用臺灣銀行牌告匯率，並標示資料來源","天氣載入失敗時會清楚顯示原因，可以重試","通用版：不限目的地，任何旅行都能用","新增「天氣匯率」頁：當地天氣預報、時差、匯率換算","設定頁可以換 App 名稱、配色、封面圖片、每天的小圖示","伴手禮和代買可以一鍵搜尋商品"];
 const KEY="tripnote:data";
 const WK=["日","一","二","三","四","五","六"];
 const hadData=(()=>{try{return !!localStorage.getItem(KEY)}catch(e){return false}})();
@@ -588,6 +592,7 @@ function migrate(d){
   if(!Array.isArray(d.gifts.places))d.gifts.places=[];
   if(!Array.isArray(d.gifts.items))d.gifts.items=[];
   if(!Array.isArray(d.notes))d.notes=[];
+  if(!Array.isArray(d.spots))d.spots=[];
   if(!d.look||typeof d.look!=="object")d.look=old<3?OLD_LOOK():DEF_LOOK();   // 舊版（雪旅手帖）的使用者保留原本的名稱和樣子
   d.look=Object.assign(DEF_LOOK(),d.look);
   if(!PALETTES[d.look.palette])d.look.palette="snow";
@@ -613,7 +618,14 @@ function noteHtml(t){
   lines.forEach(l=>{const m=l.match(/^\s*[-・•*]\s*(.*)$/);if(m){ul.push(m[1])}else if(l.trim()){flush();h+=`<p>${linkify(l)}</p>`}});
   flush();return h;
 }
-function linkify(s){return esc(s).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>')}
+function linkLabel(u){
+  let h="";try{h=new URL(u.replace(/&amp;/g,"&")).hostname.replace(/^www\./,"")}catch(e){return "🔗 連結"}
+  if(/instagram\.com$/.test(h))return "📷 Instagram";if(/threads\.(net|com)$/.test(h))return "🧵 Threads";
+  if(/naver\.(me|com)$/.test(h))return "📍 Naver";if(/google\.[a-z.]+$|goo\.gl$/.test(h))return "📍 Google";
+  if(/youtube\.com$|youtu\.be$/.test(h))return "▶️ YouTube";if(/facebook\.com$|fb\.me$/.test(h))return "📘 Facebook";
+  return "🔗 "+h;
+}
+function linkify(s){return esc(s).replace(/(https?:\/\/[^\s<]+)/g,u=>`<a class="lk" href="${u}" target="_blank" rel="noopener">${linkLabel(u)}</a>`)}
 let toastT;
 function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2600)}
 const iconSet=()=>ICONSETS[state.look.icons]||ICONSETS.snow;
@@ -741,7 +753,7 @@ async function refreshLive(force){
 
 /* ---------- ui state ---------- */
 let editing=false, cur=null;
-const FIXED=[{id:"live",tab:"天氣匯率",sub:"時差",icon:"i-sun"},{id:"errand",tab:"代買",sub:"幫朋友買",icon:"i-bag"},{id:"gifts",tab:"伴手禮",sub:"哪裡買",icon:"i-gift"},{id:"notes",tab:"注意事項",sub:"網路・保險",icon:"i-memo"},{id:"lists",tab:"行前清單",sub:"打勾",icon:"i-list"},{id:"info",tab:"資訊",sub:"航班・住宿",icon:"i-info"},{id:"backup",tab:"設定",sub:"外觀・備份",icon:"i-box"}];
+const FIXED=[{id:"spots",tab:"口袋名單",sub:"想去的地方",icon:"i-pin"},{id:"live",tab:"天氣匯率",sub:"時差",icon:"i-sun"},{id:"errand",tab:"代買",sub:"幫朋友買",icon:"i-bag"},{id:"gifts",tab:"伴手禮",sub:"哪裡買",icon:"i-gift"},{id:"notes",tab:"注意事項",sub:"網路・保險",icon:"i-memo"},{id:"lists",tab:"行前清單",sub:"打勾",icon:"i-list"},{id:"info",tab:"資訊",sub:"航班・住宿",icon:"i-info"},{id:"backup",tab:"設定",sub:"外觀・備份",icon:"i-box"}];
 function tabsAll(){return state.days.map((d,i)=>({id:d.id,tab:d.label||`第 ${i+1} 天`,sub:fmtDate(d.date)||`Day ${i+1}`,icon:dayIcon(i,state.days.length,d),iso:d.date})).concat(FIXED)}
 
 /* ---------- header ---------- */
@@ -835,6 +847,22 @@ function renderGifts(){
   g.places.forEach(w=>{h+=`<div class="wcard"><div class="wtop"><b>${esc(w.name)}</b>${w.best?`<span class="chip y">${esc(w.best)}</span>`:""}</div>${w.when?`<div class="when">${esc(w.when)}</div>`:""}<div class="body">${noteHtml(w.note)}</div>${editing?`<div class="tools"><button type="button" class="tbtn edit" data-act="editPlace" data-id="${w.id}">✎ 修改</button></div>`:""}</div>`});
   h+=`</div>${editing?`<button type="button" class="addbtn" data-act="addPlace">＋ 新增購買地點</button>`:""}
   <h3 class="sec">推薦伴手禮</h3>${prodCards(g.items,"gift")}${editing?`<button type="button" class="addbtn" data-act="addProd" data-kind="gift">＋ 新增伴手禮</button>`:""}`;
+  return h;
+}
+const naverUrl=q=>"https://map.naver.com/p/search/"+encodeURIComponent(q);
+function renderSpots(){
+  const sp=state.spots,kr=state.trip.dest&&state.trip.dest.cc==="KR";
+  let h=`<div class="dayhead"><div class="hl">${ico("i-pin","mascot")}<h2>口袋名單</h2></div></div>
+  <p class="dayintro">收集起來的餐廳、咖啡廳、商店，排行程時從這裡挑。${kr?"在韓國用 Naver 地圖找路比較準。":""}</p>`;
+  if(!sp.length)h+=`<div class="empty">${ico("i-pin","mascot")}還沒有想去的地方。<br>按右下角「編輯」開始新增。</div>`;
+  const groups=[];sp.forEach(x=>{const k=x.tag||"其他";let g=groups.find(y=>y.k===k);if(!g)groups.push(g={k,items:[]});g.items.push(x)});
+  groups.forEach(g=>{
+    h+=`<h3 class="spotsec">${esc(g.k)}<small>${g.items.length} 個</small></h3>`;
+    g.items.forEach(n=>{h+=`<section class="ncard"><div class="nh"><h3>${esc(n.title)}</h3></div><div class="body">${noteHtml(n.body)}</div>
+      ${n.place?`<div class="links">${kr?`<a class="pill" href="${naverUrl(n.place)}" target="_blank" rel="noopener">Naver 地圖</a>`:""}<a class="pill" href="${mapUrl(n.place)}" target="_blank" rel="noopener">Google 地圖</a></div>`:""}
+      ${editing?`<div class="tools"><button type="button" class="tbtn edit" data-act="editSpot" data-id="${n.id}">✎ 修改</button><button type="button" class="tbtn" data-act="moveSpot" data-id="${n.id}" data-dir="-1" aria-label="往上移">↑</button><button type="button" class="tbtn" data-act="moveSpot" data-id="${n.id}" data-dir="1" aria-label="往下移">↓</button></div>`:""}</section>`});
+  });
+  if(editing)h+=`<button type="button" class="addbtn" style="margin-top:14px" data-act="addSpot">＋ 新增想去的地方</button>`;
   return h;
 }
 function renderNotes(){
@@ -1038,6 +1066,7 @@ function render(id,opts={}){
   else if(id==="errand")h+=renderErrand();
   else if(id==="gifts")h+=renderGifts();
   else if(id==="notes")h+=renderNotes();
+  else if(id==="spots")h+=renderSpots();
   else if(id==="info")h+=renderInfo();
   else if(id==="live")h+=renderLive();
   else h+=renderBackup();
@@ -1177,6 +1206,9 @@ const ACT={
   moveProd(el){const arr=prodArr(el.dataset.kind),i=arr.findIndex(x=>x.id===el.dataset.id),j=i+ +el.dataset.dir;if(j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];commit()},
   addPlace(){openSheet({title:"新增購買地點",fields:PLACE_FIELDS,onSave(v){state.gifts.places.push({id:uid(),...v});commit()}})},
   editPlace(el){const arr=state.gifts.places,w=arr.find(x=>x.id===el.dataset.id);openSheet({title:"修改購買地點",fields:PLACE_FIELDS,values:w,onSave(v){Object.assign(w,v);commit()},onDelete(){arr.splice(arr.indexOf(w),1);commit()},deleteLabel:"刪除地點"})},
+  addSpot(){openSheet({title:"新增想去的地方",fields:SPOT_FIELDS,onSave(v){state.spots.push({id:uid(),...v});commit()}})},
+  editSpot(el){const n=state.spots.find(x=>x.id===el.dataset.id);openSheet({title:"修改",fields:SPOT_FIELDS,values:n,onSave(v){Object.assign(n,v);commit()},onDelete(){state.spots.splice(state.spots.indexOf(n),1);commit()},deleteLabel:"刪除"})},
+  moveSpot(el){const arr=state.spots,i=arr.findIndex(x=>x.id===el.dataset.id),j=i+ +el.dataset.dir;if(j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];commit()},
   addNote(){openSheet({title:"新增注意事項",fields:NOTE_FIELDS,onSave(v){state.notes.push({id:uid(),...v});commit()}})},
   editNote(el){const n=state.notes.find(x=>x.id===el.dataset.id);openSheet({title:"修改注意事項",fields:NOTE_FIELDS,values:n,onSave(v){Object.assign(n,v);commit()},onDelete(){state.notes.splice(state.notes.indexOf(n),1);commit()},deleteLabel:"刪除"})},
   moveNote(el){const arr=state.notes,i=arr.findIndex(x=>x.id===el.dataset.id),j=i+ +el.dataset.dir;if(j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];commit()},
@@ -1223,6 +1255,9 @@ const PROD_FIELDS=[{k:"title",label:"品名",ph:"例如：Royce 生巧克力"},{
   {k:"price",label:"價格",ph:"例如：台灣蝦皮參考價 NT$500"},{k:"where",label:"去哪買",ph:"例如：新千歲機場"},
   {k:"note",label:"備註",type:"textarea",ph:"每行開頭打「-」會變成清單"}];
 const PLACE_FIELDS=[{k:"name",label:"地點",ph:"例如：新千歲機場"},{k:"when",label:"什麼時候去",ph:"例如：最後一天"},{k:"best",label:"適合買",ph:"例如：一次買齊"},{k:"note",label:"說明",type:"textarea"}];
+const SPOT_FIELDS=[{k:"title",label:"名稱",ph:"例如：望遠市場"},{k:"tag",label:"分類",ph:"例如：美食、咖啡廳、購物",hint:"同一個分類的會排在一起"},
+  {k:"body",label:"說明",type:"textarea",ph:"怎麼去、推薦什麼、IG 或 Threads 連結都可以貼",hint:"貼上網址會變成連結；每行開頭打「-」會變成清單"},
+  {k:"place",label:"地圖搜尋用的名稱或地址",ph:"例如：Mangwon Market",hint:"填了會出現地圖按鈕"}];
 const NOTE_FIELDS=[{k:"title",label:"標題",ph:"例如：JR Pass 兌換"},{k:"tag",label:"小標籤",ph:"例如：已購買"},{k:"body",label:"內容",type:"textarea",ph:"每行開頭打「-」會變成清單"}];
 function shrink(file,m=480,q=.72){return new Promise((res,rej)=>{const r=new FileReader();r.onerror=rej;r.onload=()=>{const im=new Image();im.onerror=rej;im.onload=()=>{const sc=Math.min(1,m/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",q))};im.src=r.result};r.readAsDataURL(file)})}
 function withImg(v,old){
